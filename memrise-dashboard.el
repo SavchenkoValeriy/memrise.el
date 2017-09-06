@@ -52,11 +52,13 @@
     (description . memrise-dashboard-description))
   "Mapping of dashboard elements to faces")
 
-(defun memrise/propertize-dashboard (objects)
+(defun memrise/propertize-dashboard (objects course)
   (mapcar (lambda (pair)
             (let ((key (car pair))
                   (value (cdr pair)))
-              `(,key . ,(propertize (format "%s" value) 'face (assoc-default key memrise/dashboard-faces)))))
+              `(,key . ,(propertize (format "%s" value)
+                                    'face (assoc-default key memrise/dashboard-faces)
+                                    'course course))))
           objects))
 
 (defun memrise/insert-course (course)
@@ -68,7 +70,7 @@
                            (diff-icon . ,memrise/difficult-icon)
                            (difficult . ,(memrise/course-difficult course))
                            (description . ,(memrise/course-description course))))
-         (faced-objects (memrise/propertize-dashboard format-objects)))
+         (faced-objects (memrise/propertize-dashboard format-objects course)))
     (insert (s-format memrise/dashboard-format 'aget faced-objects))))
 
 ;; Course structs
