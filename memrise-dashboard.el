@@ -18,11 +18,13 @@
     (mapc 'memrise/insert-course courses)))
 
 (defun memrise/insert-course (course)
-  (insert (propertize (format "%s    %d/%d  %s %d\n%s\n\n"
+  (insert (propertize (format "%s    %d/%d  %s%d %s%d\n%s\n\n"
                               (memrise/course-name course)
                               (memrise/course-learned course)
                               (memrise/course-number-of-things course)
+                              (all-the-icons-faicon "tint" :v-adjust 0.0)
                               (memrise/course-to-review course)
+                              (all-the-icons-faicon "bolt" :v-adjust 0.0)
                               (memrise/course-difficult course)
                               (memrise/course-description course))
                       'face 'memrise-water)))
