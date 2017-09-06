@@ -17,17 +17,59 @@
   (with-current-buffer buffer
     (mapc 'memrise/insert-course courses)))
 
+(defcustom memrise/dashboard-format
+  "${name}    ${learned}/${all}  ${rev-icon}${review} ${diff-icon}${difficult}\n${description}\n\n"
+  "Format string to display courses on Memrise dashboard.
+
+{name}        - course name ('Swedish 3')
+{learned}     - number of things that the user learned in the course
+{all}         - overall number of things in the course
+{rev-icon}    - icon to use for words that require review/water
+{review}      - number of things to review/water in the course
+{diff-icon}   - icon to use for difficult words
+{difficult}   - number of words marked as 'difficult' in the course
+{description} - course description"
+  :group 'memrise)
+
+(defcustom memrise/review-icon
+  (all-the-icons-faicon "tint" :v-adjust 0.0)
+  "Icon to use for words that require review/water"
+  :group 'memrise)
+
+(defcustom memrise/difficult-icon
+  (all-the-icons-faicon "bolt" :v-adjust 0.0)
+  "Icon to use for words marked as 'difficult'"
+  :group 'memrise)
+
+(defvar memrise/dashboard-faces
+  '((name . memrise-dashboard-name)
+    (learned . memrise-dashboard-learned)
+    (all . memrise-dashboard-all)
+    (rev-icon . memrise-dashboard-review)
+    (review . memrise-dashboard-review)
+    (diff-icon . memrise-dashboard-difficult)
+    (difficult . memrise-dashboard-difficult)
+    (description . memrise-dashboard-description))
+  "Mapping of dashboard elements to faces")
+
+(defun memrise/propertize-dashboard (objects)
+  (mapcar (lambda (pair)
+            (let ((key (car pair))
+                  (value (cdr pair)))
+              `(,key . ,(propertize (format "%s" value) 'face (assoc-default key memrise/dashboard-faces)))))
+          objects))
+
 (defun memrise/insert-course (course)
-  (insert (propertize (format "%s    %d/%d  %s%d %s%d\n%s\n\n"
-                              (memrise/course-name course)
-                              (memrise/course-learned course)
-                              (memrise/course-number-of-things course)
-                              (all-the-icons-faicon "tint" :v-adjust 0.0)
-                              (memrise/course-to-review course)
-                              (all-the-icons-faicon "bolt" :v-adjust 0.0)
-                              (memrise/course-difficult course)
-                              (memrise/course-description course))
-                      'face 'memrise-water)))
+  (let* ((format-objects `((name . ,(memrise/course-name course))
+                           (learned . ,(memrise/course-learned course))
+                           (all . ,(memrise/course-number-of-things course))
+                           (rev-icon . ,memrise/review-icon)
+                           (review . ,(memrise/course-to-review course))
+                           (diff-icon . ,memrise/difficult-icon)
+                           (difficult . ,(memrise/course-difficult course))
+                           (description . ,(memrise/course-description course))))
+         (faced-objects (memrise/propertize-dashboard format-objects)))
+    (insert (s-format memrise/dashboard-format 'aget faced-objects))))
 
 ;; Course structs
 (defstruct memrise/course
@@ -38,9 +80,39 @@
   to-review
   difficult)
 
-(defface memrise-water
-  '((t :weight bold :foreground "#4f94cd"))
-  "Face for number of things to review"
+(defface memrise-dashboard-name
+  '((t :inherit font-lock-keyword-face))
+  "Face for the course name to show on a dashboard"
+  :group 'memrise/faces)
+
+(defface memrise-dashboard-learned
+  '((t :foreground "#2e8b57"))
+  "Face for the number of things leraned to show on a dashboard"
+  :group 'memrise/faces)
+
+(defface memrise-dashboard-all
+  '((t :inherit memrise-dashboard-learned))
+  "Face for the overall number of things in the course to show on a dashboard"
+  :group 'memrise/faces)
+
+(defface memrise-dashboard-review
+  '((t :foreground "#1e90ff"))
+  "Face for the number of things to review/water to show on a dashboard"
+  :group 'memrise/faces)
+
+(defface memrise-dashboard-difficult
+  '((t :foreground "#Ff8c00"))
+  "Face for the number of things marked as 'difficult' to show on a dashboard"
+  :group 'memrise/faces)
+
+(defface memrise-dashboard-description
+  `((t :inherit font-lock-comment-face
+       :height ,(floor (* 0.7
+                          (face-attribute font-lock-comment-face
+                                          :height
+                                          nil
+                                          'default)))))
+  "Face for course description to show on a dashboard"
   :group 'memrise/faces)
 
 ;; it's some sort of a map from JSON field name to a memrise/course's field index
