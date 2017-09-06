@@ -10,6 +10,8 @@
     (with-current-buffer buffer
       (erase-buffer)
       (memrise-mode)
+;;      (memrise/request-dashboard (lambda (data)
+;;                                   (memrise/insert-courses (memrise/parse-courses data) buffer)))
       (memrise/insert-courses (memrise/parse-courses test) buffer)
       (switch-to-buffer buffer))))
 
