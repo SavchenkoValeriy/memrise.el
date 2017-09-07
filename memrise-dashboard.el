@@ -1,8 +1,6 @@
 (require 'memrise-request)
 (require 'memrise-session)
 
-(define-derived-mode memrise-mode special-mode "Memrise")
-
 (defvar memrise-mode-map
   (let ((map (make-keymap)))
     (define-key map "n" 'memrise/dashboard-course-forward)
@@ -11,6 +9,8 @@
     (define-key map "r" 'memrise/dashboard-course-review)
     map)
   "Keymap for a memrise dashboard buffer")
+
+(define-derived-mode memrise-mode special-mode "Memrise")
 
 (defun memrise/dashboard-buffer ()
   (get-buffer-create "Memrise"))
@@ -29,6 +29,19 @@
         ;;                                   (memrise/insert-courses (memrise/parse-courses data) buffer)))
         (memrise/display-courses courses buffer)
         (switch-to-buffer buffer)))))
+
+;; Course structs
+(defstruct memrise/course
+  name             ;; name (Swedish 3)
+  description      ;; description (couple of sentences)
+  number-of-things ;; overall number of things to learn
+  learned          ;; number of things already learned
+  to-review        ;; number of things to review/water
+  difficult        ;; number of difficult words
+  id               ;; memrise ID of the course
+  start            ;; dashboard position where course widget starts
+  end              ;; dashboard position where course widget ends
+  )
 
 (defun memrise/courses ()
   (with-current-buffer (memrise/dashboard-buffer)
@@ -137,18 +150,6 @@
          (faced-objects (memrise/propertize-dashboard-elements format-objects)))
     (memrise/insert-course (s-format memrise/dashboard-format 'aget faced-objects) course)
     (insert "\n\n")))
-
-;; Course structs
-(defstruct memrise/course
-  name
-  description
-  number-of-things
-  learned
-  to-review
-  difficult
-  id
-  start
-  end)
 
 (defface memrise-dashboard-name
   '((t :inherit font-lock-keyword-face))
