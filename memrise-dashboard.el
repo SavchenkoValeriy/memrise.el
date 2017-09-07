@@ -1,26 +1,77 @@
 (require 'memrise-request)
 
-(define-derived-mode memrise-mode fundamental-mode "Memrise")
+(define-derived-mode memrise-mode special-mode "Memrise")
 
-(defvar test '((courses . [((name . "German 3") (description . "Find your way around, talk about the future, learn some German expressions that will impress everyone you meet.") (photo . "https://d2rhekw5qr4gcj.cloudfront.net/img/400sqf/from/uploads/course_photos/16054981000161215161109.jpg") (num_things . 641) (audio_mode . t) (url . "https://www.memrise.com/course/1180560/german-3/") (id . 1180560) (category (photo . "https://d2rhekw5qr4gcj.cloudfront.net/uploads/language_photos/german.png")) (goal (goal . 1500) (points . 975) (course_id . 1180560) (streak . 0)) (learned . 0) (review . 0) (ignored . 0) (ltm . 0) (difficult . 0) (percent_complete . 0) (pro_chats . []) (grammar_chats . [((title . "Asking questions") (mission_id . 487)) ((title . "Denial (not the river)") (mission_id . 711)) ((title . "Denial Volume 2") (mission_id . 716)) ((title . "Asking questions") (mission_id . 487)) ((title . "Denial (not the river)") (mission_id . 711)) ((title . "Denial Volume 2") (mission_id . 716))])) ((name . "German 2") (description . "Build your basic vocab. Learn to count, go shopping with confidence, learn a bunch of colloquial expressions that’ll make people laugh.") (photo . "https://d2rhekw5qr4gcj.cloudfront.net/img/400sqf/from/uploads/course_photos/16054981000161215161055.jpg") (num_things . 348) (audio_mode . t) (url . "https://www.memrise.com/course/1180559/german-2/") (id . 1180559) (category (photo . "https://d2rhekw5qr4gcj.cloudfront.net/uploads/language_photos/german.png")) (goal (goal . 6000) (points . 6184) (course_id . 1180559) (streak . 1)) (learned . 348) (review . 112) (ignored . 0) (ltm . 236) (difficult . 4) (percent_complete . 100) (pro_chats . []) (grammar_chats . [((title . "Asking questions") (mission_id . 487)) ((title . "Denial (not the river)") (mission_id . 711)) ((title . "Denial Volume 2") (mission_id . 716)) ((title . "Asking questions") (mission_id . 487)) ((title . "Denial (not the river)") (mission_id . 711)) ((title . "Denial Volume 2") (mission_id . 716))])) ((name . "Swedish 1") (description . "Introduce yourself, get around, and learn a bunch of useful colloquial expressions to make people smile") (photo . "https://d2rhekw5qr4gcj.cloudfront.net/img/400sqf/from/uploads/course_photos/14005276000160822140032.jpg") (num_things . 220) (audio_mode . t) (url . "https://www.memrise.com/course/1179762/swedish-1/") (id . 1179762) (category (photo . "https://d2rhekw5qr4gcj.cloudfront.net/uploads/language_photos/DemoFlags-18_copy.png")) (goal (goal . 1500) (points . 2373) (course_id . 1179762) (streak . 2)) (learned . 188) (review . 23) (ignored . 0) (ltm . 165) (difficult . 9) (percent_complete . 85) (pro_chats . [((title . "Who are you?") (mission_id . 179)) ((title . "Who are you?") (mission_id . 179))]) (grammar_chats . [])) ((name . "German 1") (description . "Introduce yourself, get around, and learn a bunch of useful colloquial German expressions to make people smile") (photo . "https://d2rhekw5qr4gcj.cloudfront.net/img/400sqf/from/uploads/course_photos/16054981000161215161042.jpg") (num_things . 197) (audio_mode . t) (url . "https://www.memrise.com/course/1180558/german-1/") (id . 1180558) (category (photo . "https://d2rhekw5qr4gcj.cloudfront.net/uploads/language_photos/german.png")) (goal (goal . 6000) (points . 0) (course_id . 1180558) (streak . 0)) (learned . 197) (review . 197) (ignored . 0) (ltm . 0) (difficult . 10) (percent_complete . 100) (pro_chats . []) (grammar_chats . [((title . "Asking questions") (mission_id . 487)) ((title . "Denial (not the river)") (mission_id . 711)) ((title . "Denial Volume 2") (mission_id . 716)) ((title . "Asking questions") (mission_id . 487)) ((title . "Denial (not the river)") (mission_id . 711)) ((title . "Denial Volume 2") (mission_id . 716))]))]) (to_review_total . 0) (has_more_courses . :json-false)))
+(defvar memrise-mode-map
+  (let ((map (make-keymap)))
+    (define-key map "n" 'memrise/dashboard-course-forward)
+    (define-key map "l" 'memrise/dashboard-course-learn)
+    (define-key map "r" 'memrise/dashboard-course-review)
+    map)
+  "Keymap for a memrise dashboard buffer")
+
+(setq memrise-mode-map
+      (let ((map (make-keymap)))
+    (define-key map "n" 'memrise/dashboard-course-forward)
+    (define-key map "l" 'memrise/dashboard-course-learn)
+    (define-key map "r" 'memrise/dashboard-course-review)
+    map))
+
+
+(defun memrise/dashboard-buffer ()
+  (get-buffer-create "Memrise"))
 
 (defun memrise/dashboard ()
   (interactive)
-  (lexical-let ((buffer (get-buffer-create "Memrise")))
+  (lexical-let ((buffer (memrise/dashboard-buffer)))
     (with-current-buffer buffer
-      (erase-buffer)
-      (memrise-mode)
-;;      (memrise/request-dashboard (lambda (data)
-;;                                   (memrise/insert-courses (memrise/parse-courses data) buffer)))
-      (memrise/insert-courses (memrise/parse-courses test) buffer)
-      (switch-to-buffer buffer))))
+      (let ((inhibit-read-only t))
+        (kill-all-local-variables)
+        (erase-buffer)
+        (memrise-mode)
+        (make-local-variable 'courses)
+        (setq courses (memrise/parse-courses test))
+        ;;      (memrise/request-dashboard (lambda (data)
+        ;;                                   (memrise/insert-courses (memrise/parse-courses data) buffer)))
+        (memrise/display-courses courses buffer)
+        (switch-to-buffer buffer)))))
 
-(defun memrise/insert-courses (courses buffer)
+(defun memrise/courses ()
+  (with-current-buffer (memrise/dashboard-buffer)
+    courses))
+
+(defun memrise/current-course ()
+  (get-text-property (point-marker) 'course))
+
+(defun memrise/next-course (course)
+  (let ((next-courses (cdr (member course (memrise/courses)))))
+    (if next-courses
+        (car next-courses)
+      (car courses))))
+
+(defun memrise/dashboard-course-learn (course)
+  (interactive (list (memrise/current-course)))
+  (message "Learning: %s (ID: %s)"
+           (memrise/course-name course)
+           (memrise/course-id course)))
+
+(defun memrise/dashboard-course-review (course)
+  (interactive (list (memrise/current-course)))
+  (message "Reviewing: %s (ID: %s)"
+           (memrise/course-name course)
+           (memrise/course-id course)))
+
+(defun memrise/dashboard-course-forward (course)
+  (interactive (list (memrise/current-course)))
+  (let ((dest (memrise/next-course course)))
+    (goto-char (memrise/course-start dest))))
+
+(defun memrise/display-courses (courses buffer)
   (with-current-buffer buffer
-    (mapc 'memrise/insert-course courses)))
+    (mapc 'memrise/display-course courses)))
 
 (defcustom memrise/dashboard-format
-  "${name}    ${learned}/${all}  ${rev-icon}${review} ${diff-icon}${difficult}\n${description}\n\n"
+  "${name}    ${learned}/${all}  ${rev-icon}${review} ${diff-icon}${difficult}\n${description}"
   "Format string to display courses on Memrise dashboard.
 
 {name}        - course name ('Swedish 3')
@@ -54,16 +105,21 @@
     (description . memrise-dashboard-description))
   "Mapping of dashboard elements to faces")
 
-(defun memrise/propertize-dashboard (objects course)
+(defun memrise/propertize-dashboard-elements (objects)
   (mapcar (lambda (pair)
             (let ((key (car pair))
                   (value (cdr pair)))
-              `(,key . ,(propertize (format "%s" value)
-                                    'face (assoc-default key memrise/dashboard-faces)
-                                    'course course))))
+              `(,key . ,(propertize
+                         (format "%s" value)
+                         'face (assoc-default key memrise/dashboard-faces)))))
           objects))
 
-(defun memrise/insert-course (course)
+(defun memrise/insert-course (text course)
+  (setf (memrise/course-start course) (point-marker))
+  (insert (propertize text 'course course))
+  (setf (memrise/course-end course) (point-marker)))
+
+(defun memrise/display-course (course)
   (let* ((format-objects `((name . ,(memrise/course-name course))
                            (learned . ,(memrise/course-learned course))
                            (all . ,(memrise/course-number-of-things course))
@@ -72,8 +128,9 @@
                            (diff-icon . ,memrise/difficult-icon)
                            (difficult . ,(memrise/course-difficult course))
                            (description . ,(memrise/course-description course))))
-         (faced-objects (memrise/propertize-dashboard format-objects course)))
-    (insert (s-format memrise/dashboard-format 'aget faced-objects))))
+         (faced-objects (memrise/propertize-dashboard-elements format-objects)))
+    (memrise/insert-course (s-format memrise/dashboard-format 'aget faced-objects) course)
+    (insert "\n\n")))
 
 ;; Course structs
 (defstruct memrise/course
@@ -82,7 +139,10 @@
   number-of-things
   learned
   to-review
-  difficult)
+  difficult
+  id
+  start
+  end)
 
 (defface memrise-dashboard-name
   '((t :inherit font-lock-keyword-face))
@@ -125,7 +185,8 @@
                                 (num_things 3)
                                 (learned 4)
                                 (review 5)
-                                (difficult 6)))
+                                (difficult 6)
+                                (id 7)))
 
 ;; Course JSON parsers
 (defun memrise/parse-course (course-alist)
@@ -143,3 +204,6 @@
   (mapcar 'memrise/parse-course (assoc-default 'courses courses-list)))
 
 (provide 'memrise-dashboard)
+
+
+(defvar test '((courses . [((name . "German 3") (description . "Find your way around, talk about the future, learn some German expressions that will impress everyone you meet.") (photo . "https://d2rhekw5qr4gcj.cloudfront.net/img/400sqf/from/uploads/course_photos/16054981000161215161109.jpg") (num_things . 641) (audio_mode . t) (url . "https://www.memrise.com/course/1180560/german-3/") (id . 1180560) (category (photo . "https://d2rhekw5qr4gcj.cloudfront.net/uploads/language_photos/german.png")) (goal (goal . 1500) (points . 975) (course_id . 1180560) (streak . 0)) (learned . 0) (review . 0) (ignored . 0) (ltm . 0) (difficult . 0) (percent_complete . 0) (pro_chats . []) (grammar_chats . [((title . "Asking questions") (mission_id . 487)) ((title . "Denial (not the river)") (mission_id . 711)) ((title . "Denial Volume 2") (mission_id . 716)) ((title . "Asking questions") (mission_id . 487)) ((title . "Denial (not the river)") (mission_id . 711)) ((title . "Denial Volume 2") (mission_id . 716))])) ((name . "German 2") (description . "Build your basic vocab. Learn to count, go shopping with confidence, learn a bunch of colloquial expressions that’ll make people laugh.") (photo . "https://d2rhekw5qr4gcj.cloudfront.net/img/400sqf/from/uploads/course_photos/16054981000161215161055.jpg") (num_things . 348) (audio_mode . t) (url . "https://www.memrise.com/course/1180559/german-2/") (id . 1180559) (category (photo . "https://d2rhekw5qr4gcj.cloudfront.net/uploads/language_photos/german.png")) (goal (goal . 6000) (points . 6184) (course_id . 1180559) (streak . 1)) (learned . 348) (review . 112) (ignored . 0) (ltm . 236) (difficult . 4) (percent_complete . 100) (pro_chats . []) (grammar_chats . [((title . "Asking questions") (mission_id . 487)) ((title . "Denial (not the river)") (mission_id . 711)) ((title . "Denial Volume 2") (mission_id . 716)) ((title . "Asking questions") (mission_id . 487)) ((title . "Denial (not the river)") (mission_id . 711)) ((title . "Denial Volume 2") (mission_id . 716))])) ((name . "Swedish 1") (description . "Introduce yourself, get around, and learn a bunch of useful colloquial expressions to make people smile") (photo . "https://d2rhekw5qr4gcj.cloudfront.net/img/400sqf/from/uploads/course_photos/14005276000160822140032.jpg") (num_things . 220) (audio_mode . t) (url . "https://www.memrise.com/course/1179762/swedish-1/") (id . 1179762) (category (photo . "https://d2rhekw5qr4gcj.cloudfront.net/uploads/language_photos/DemoFlags-18_copy.png")) (goal (goal . 1500) (points . 2373) (course_id . 1179762) (streak . 2)) (learned . 188) (review . 23) (ignored . 0) (ltm . 165) (difficult . 9) (percent_complete . 85) (pro_chats . [((title . "Who are you?") (mission_id . 179)) ((title . "Who are you?") (mission_id . 179))]) (grammar_chats . [])) ((name . "German 1") (description . "Introduce yourself, get around, and learn a bunch of useful colloquial German expressions to make people smile") (photo . "https://d2rhekw5qr4gcj.cloudfront.net/img/400sqf/from/uploads/course_photos/16054981000161215161042.jpg") (num_things . 197) (audio_mode . t) (url . "https://www.memrise.com/course/1180558/german-1/") (id . 1180558) (category (photo . "https://d2rhekw5qr4gcj.cloudfront.net/uploads/language_photos/german.png")) (goal (goal . 6000) (points . 0) (course_id . 1180558) (streak . 0)) (learned . 197) (review . 197) (ignored . 0) (ltm . 0) (difficult . 10) (percent_complete . 100) (pro_chats . []) (grammar_chats . [((title . "Asking questions") (mission_id . 487)) ((title . "Denial (not the river)") (mission_id . 711)) ((title . "Denial Volume 2") (mission_id . 716)) ((title . "Asking questions") (mission_id . 487)) ((title . "Denial (not the river)") (mission_id . 711)) ((title . "Denial Volume 2") (mission_id . 716))]))]) (to_review_total . 0) (has_more_courses . :json-false)))
