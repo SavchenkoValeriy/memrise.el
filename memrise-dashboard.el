@@ -5,18 +5,11 @@
 (defvar memrise-mode-map
   (let ((map (make-keymap)))
     (define-key map "n" 'memrise/dashboard-course-forward)
+    (define-key map "p" 'memrise/dashboard-course-backward)
     (define-key map "l" 'memrise/dashboard-course-learn)
     (define-key map "r" 'memrise/dashboard-course-review)
     map)
   "Keymap for a memrise dashboard buffer")
-
-(setq memrise-mode-map
-      (let ((map (make-keymap)))
-    (define-key map "n" 'memrise/dashboard-course-forward)
-    (define-key map "l" 'memrise/dashboard-course-learn)
-    (define-key map "r" 'memrise/dashboard-course-review)
-    map))
-
 
 (defun memrise/dashboard-buffer ()
   (get-buffer-create "Memrise"))
@@ -43,27 +36,43 @@
 (defun memrise/current-course ()
   (get-text-property (point-marker) 'course))
 
-(defun memrise/next-course (course)
+(defun memrise/next-course (course courses)
   (let ((next-courses (cdr (member course (memrise/courses)))))
     (if next-courses
         (car next-courses)
       (car courses))))
 
 (defun memrise/dashboard-course-learn (course)
+  "Starts 'learning new words' session for the given course"
   (interactive (list (memrise/current-course)))
-  (message "Learning: %s (ID: %s)"
-           (memrise/course-name course)
-           (memrise/course-id course)))
+  (let ((all (memrise/course-number-of-things course))
+        (learned (memrise/course-learned course)))
+    (if (eq (- all learned) 0)
+        (message "Nothing's left to learn in the course. Did you mean 'review'?")
+      (message "Learning: %s (ID: %s)"
+               (memrise/course-name course)
+               (memrise/course-id course)))))
 
 (defun memrise/dashboard-course-review (course)
+  "Starts review/water session for the given course"
   (interactive (list (memrise/current-course)))
-  (message "Reviewing: %s (ID: %s)"
+  (let ((to-review (memrise/course-to-review course)))
+    (if (eq to-review 0)
+        (message "Nothing to review in the course. Did you mean 'learn'?")
+    (message "Reviewing: %s (ID: %s)"
            (memrise/course-name course)
-           (memrise/course-id course)))
+           (memrise/course-id course)))))
 
 (defun memrise/dashboard-course-forward (course)
+  "Moves cursor to a next course on the dashboard"
   (interactive (list (memrise/current-course)))
-  (let ((dest (memrise/next-course course)))
+  (let ((dest (memrise/next-course course courses)))
+    (goto-char (memrise/course-start dest))))
+
+(defun memrise/dashboard-course-backward (course)
+  "Moves cursor to a previous course on the dashboard"
+  (interactive (list (memrise/current-course)))
+  (let ((dest (memrise/next-course course (reverse courses))))
     (goto-char (memrise/course-start dest))))
 
 (defun memrise/display-courses (courses buffer)
