@@ -1,4 +1,5 @@
 (require 'memrise-request)
+(require 'memrise-session)
 
 (define-derived-mode memrise-mode special-mode "Memrise")
 
@@ -49,9 +50,7 @@
         (learned (memrise/course-learned course)))
     (if (eq (- all learned) 0)
         (message "Nothing's left to learn in the course. Did you mean 'review'?")
-      (message "Learning: %s (ID: %s)"
-               (memrise/course-name course)
-               (memrise/course-id course)))))
+      (memrise/start-learn-session (memrise/course-id course)))))
 
 (defun memrise/dashboard-course-review (course)
   "Starts review/water session for the given course"
@@ -59,9 +58,7 @@
   (let ((to-review (memrise/course-to-review course)))
     (if (eq to-review 0)
         (message "Nothing to review in the course. Did you mean 'learn'?")
-    (message "Reviewing: %s (ID: %s)"
-           (memrise/course-name course)
-           (memrise/course-id course)))))
+      (memrise/start-review-session (memrise/course-id course)))))
 
 (defun memrise/dashboard-course-forward (course)
   "Moves cursor to a next course on the dashboard"
