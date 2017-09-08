@@ -69,17 +69,25 @@
   keyboard
   )
 
+(defvar memrise/video-quality 'medium
+  "Memrise video quality, one of '(low medium high)")
+
+(defvar memrise/material-storage-url "https://d2rhekw5qr4gcj.cloudfront.net/"
+  "Memrise web-site used to download all audio/video materials")
+
 ;; JSON parsing section
 (defun memrise/parse-session (json)
   (let* ((name (memrise/parse-session-course-name json))
          (title (memrise/parse-session-title json))
          (pools (memrise/parse-session-pools json))
-         (things (memrise/parse-session-things json pools)))
+         (things (memrise/parse-session-things json pools))
+         (tasks (memrise/parse-session-tasks json)))
     (make-memrise/session
      :course-name name
      :title title
      :pools pools
-     :things things)))
+     :things things
+     :tasks tasks)))
 
 (defun memrise/parse-session-course-name (json)
   (let* ((session (assoc-default 'session json))
@@ -144,7 +152,13 @@
   (car (memrise/parse-session-thing-column json pool 'memrise/session-pool-literal-translation-column)))
 
 (defun memrise/parse-session-thing-video (json pool)
-  (car (memrise/parse-session-thing-column json pool 'memrise/session-pool-video-column)))
+  (let ((video (car (memrise/parse-session-thing-column
+                     json
+                     pool
+                     'memrise/session-pool-video-column))))
+    (if (> (length video) 0)
+        (setq video (aref video 0)))
+    (assoc-default memrise/video-quality json)))
 
 (defun memrise/parse-session-thing-column (json pool column-id-getter)
   (let* ((column-id (funcall column-id-getter pool))
@@ -159,6 +173,22 @@
 (defun memrise/session-pool-audio-column (pool) '\3)
 (defun memrise/session-pool-literal-translation-column (pool) '\4)
 (defun memrise/session-pool-video-column (pool) '\5)
+
+(defun memrise/parse-session-tasks (json)
+  (mapcar 'memrise/parse-session-task (assoc-default 'boxes json)))
+
+(defun memrise/parse-session-task (json)
+  (let ((id (assoc-default 'thing_id json))
+        (kind (assoc-default 'template json))
+        (column-a (assoc-default 'column_a json))
+        (column-b (assoc-default 'column_b json))
+        (learn-level (assoc-default 'learn_session_level json)))
+    (make-memrise/session-task
+     :thing-id id
+     :kind kind
+     :column-a column-a
+     :column-b column-b
+     :learn-level learn-level)))
 
 (defun memrise/parse-session-pools (json)
   (mapcar
