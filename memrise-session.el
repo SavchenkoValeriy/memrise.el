@@ -28,7 +28,7 @@
 
 (defun memrise/start-review-session (course-id)
   "Starts a new memrise review/water session"
-  (memrise/start-session course-id "review"))
+  (memrise/start-session course-id "classic_review"))
 
 (defstruct memrise/session
   course-name
