@@ -75,6 +75,11 @@
 (defvar memrise/material-storage-url "https://d2rhekw5qr4gcj.cloudfront.net/"
   "Memrise web-site used to download all audio/video materials")
 
+(defcustom memrise/material-storage-directory
+  (concat (file-name-as-directory user-emacs-directory) "memrise")
+  "Directory to store data related to request.el."
+  :type 'directory)
+
 ;; JSON parsing section
 (defun memrise/parse-session (json)
   (let* ((name (memrise/parse-session-course-name json))
@@ -139,14 +144,31 @@
                                                           'memrise/session-pool-audio-column))
          (audio (car audio-jsons)))
     (if (vectorp audio)
-        (setq audio-jsons (append '((aref audio 0)) (cdr audio-jsons))))
+        (setq audio-jsons (append `(,(aref audio 0)) (cdr audio-jsons))))
     (memrise/download-audios audio-jsons)))
 
 (defun memrise/download-audios (json)
   (mapcar 'memrise/download-audio json))
 
 (defun memrise/download-audio (json)
-  (assoc-default 'url json))
+  (let* ((relative-url (assoc-default 'url json))
+         (url (concat memrise/material-storage-url relative-url))
+         (audio-dir (file-name-as-directory "audio"))
+         (file (concat
+                audio-dir
+                (memrise/get-audio-id url)
+                "."
+                (memrise/get-audio-extension url))))
+    (memrise/download url file)))
+
+(defun memrise/get-audio-id (url)
+  ;; example: url == .../11967/1.mp3
+  (file-name-nondirectory        ;; 11967
+   (directory-file-name          ;; .../11967
+    (file-name-directory url)))) ;; .../11967/
+
+(defun memrise/get-audio-extension (url)
+  (file-name-extension url))
 
 (defun memrise/parse-session-thing-literal-translation (json pool)
   (car (memrise/parse-session-thing-column json pool 'memrise/session-pool-literal-translation-column)))
@@ -159,6 +181,22 @@
     (if (> (length video) 0)
         (setq video (aref video 0)))
     (assoc-default memrise/video-quality json)))
+
+(defun memrise/download (what where)
+  "Download file from location `what' and puts it by location `where'"
+  (let* ((where (concat
+                 (file-name-as-directory
+                  memrise/material-storage-directory)
+                 where))
+         (dest-dir (file-name-directory where)))
+    (if (file-exists-p where)
+        ;; re-use previously downloaded one
+        where
+      (if (not (file-exists-p dest-dir))
+          ;; recursively make directories for downloading
+          (make-directory dest-dir t))
+      (url-copy-file what where)
+      where)))
 
 (defun memrise/parse-session-thing-column (json pool column-id-getter)
   (let* ((column-id (funcall column-id-getter pool))
