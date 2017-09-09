@@ -33,9 +33,18 @@
 (defstruct memrise/session
   course-name
   title
-  pools
+  helper
   things
   tasks
+  )
+
+(defstruct memrise/helper
+  source
+  target
+  (audio "Audio")
+  (video "Videos")
+  (literal-translation "Literal translation")
+  pools
   )
 
 (defstruct memrise/session-thing
@@ -84,13 +93,13 @@
 (defun memrise/parse-session (json)
   (let* ((name (memrise/parse-session-course-name json))
          (title (memrise/parse-session-title json))
-         (pools (memrise/parse-session-pools json))
-         (things (memrise/parse-session-things json pools))
+         (helper (memrise/parse-session-helper json))
+         (things (memrise/parse-session-things json helper))
          (tasks (memrise/parse-session-tasks json)))
     (make-memrise/session
      :course-name name
      :title title
-     :pools pools
+     :helper helper
      :things things
      :tasks tasks)))
 
@@ -111,16 +120,16 @@
    `(lambda (thing-json) (memrise/parse-session-thing thing-json pools))
    (assoc-default 'things json)))
 
-(defun memrise/parse-session-thing (json pools)
+(defun memrise/parse-session-thing (json generic-helper)
   (let* ((id (memrise/integer-for-id (car json)))
          (columns (assoc-default 'columns json))
          (pool-id (assoc-default 'pool_id json))
-         (pool (assoc-default pool-id pools))
-         (texts (memrise/parse-session-thing-texts columns pool))
-         (translations (memrise/parse-session-thing-translations columns pool))
-         (audios (memrise/parse-session-thing-audios columns pool))
-         (literal-translation (memrise/parse-session-thing-literal-translation columns pool))
-         (video (memrise/parse-session-thing-video columns pool)))
+         (helper (memrise/get-specific-helper generic-helper pool-id))
+         (texts (memrise/parse-session-thing-texts columns helper))
+         (translations (memrise/parse-session-thing-translations columns helper))
+         (audios (memrise/parse-session-thing-audios columns helper))
+         (literal-translation (memrise/parse-session-thing-literal-translation columns helper))
+         (video (memrise/parse-session-thing-video columns helper)))
     `(,id . ,(make-memrise/session-thing
               :id id
               :text (car texts)
@@ -132,16 +141,23 @@
               :translation-options (cdr translations)
               :audio-options (cdr audios)))))
 
-(defun memrise/parse-session-thing-texts (json pool)
-  (memrise/parse-session-thing-column json pool 'memrise/session-pool-text-column))
+(defun memrise/get-specific-helper (helper pool-id)
+  "Returns modified version of a helper specific to the given pool-id"
+  (let ((result (copy-memrise/helper helper))
+        (pools (memrise/helper-pools helper)))
+    (setf (memrise/helper-pools result) `(,(assoc-default pool-id pools)))
+    result))
 
-(defun memrise/parse-session-thing-translations (json pool)
-  (memrise/parse-session-thing-column json pool 'memrise/session-pool-translation-column))
+(defun memrise/parse-session-thing-texts (json helper)
+  (memrise/parse-session-thing-column json helper 'memrise/session-helper-text-column))
 
-(defun memrise/parse-session-thing-audios (json pool)
+(defun memrise/parse-session-thing-translations (json helper)
+  (memrise/parse-session-thing-column json helper 'memrise/session-helper-translation-column))
+
+(defun memrise/parse-session-thing-audios (json helper)
   (let* ((audio-jsons (memrise/parse-session-thing-column json
-                                                          pool
-                                                          'memrise/session-pool-audio-column))
+                                                          helper
+                                                          'memrise/session-helper-audio-column))
          (audio (car audio-jsons)))
     (if (vectorp audio)
         (setq audio-jsons (append `(,(aref audio 0)) (cdr audio-jsons))))
@@ -170,17 +186,30 @@
 (defun memrise/get-audio-extension (url)
   (file-name-extension url))
 
-(defun memrise/parse-session-thing-literal-translation (json pool)
-  (car (memrise/parse-session-thing-column json pool 'memrise/session-pool-literal-translation-column)))
+(defun memrise/parse-session-thing-literal-translation (json helper)
+  (car (memrise/parse-session-thing-column json helper 'memrise/session-helper-literal-translation-column)))
 
-(defun memrise/parse-session-thing-video (json pool)
+(defun memrise/parse-session-thing-video (json helper)
   (let ((video (car (memrise/parse-session-thing-column
                      json
-                     pool
-                     'memrise/session-pool-video-column))))
+                     helper
+                     'memrise/session-helper-video-column))))
     (if (> (length video) 0)
-        (setq video (aref video 0)))
-    (assoc-default memrise/video-quality json)))
+        (progn
+          (setq video (aref video 0))
+          (if video
+              (memrise/download-video video)
+            nil))
+      nil)))
+
+(defun memrise/download-video (json)
+  (let* ((url (assoc-default memrise/video-quality json))
+         (video-dir (file-name-as-directory "video"))
+         (file (concat video-dir (memrise/get-video-file-name url))))
+    (memrise/download url file)))
+
+(defun memrise/get-video-file-name (url)
+  (file-name-nondirectory url))
 
 (defun memrise/download (what where)
   "Download file from location `what' and puts it by location `where'"
@@ -206,11 +235,28 @@
     (add-to-list 'choices val)))
 
 ;; hard-coded for now
-(defun memrise/session-pool-text-column (pool) '\1)
-(defun memrise/session-pool-translation-column (pool) '\2)
-(defun memrise/session-pool-audio-column (pool) '\3)
-(defun memrise/session-pool-literal-translation-column (pool) '\4)
-(defun memrise/session-pool-video-column (pool) '\5)
+(defun memrise/session-helper-text-column (helper)
+  (memrise/session-helper-column-for helper (memrise/helper-target helper)))
+(defun memrise/session-helper-translation-column (helper)
+  (memrise/session-helper-column-for helper (memrise/helper-source helper)))
+(defun memrise/session-helper-audio-column (helper)
+  (memrise/session-helper-column-for helper (memrise/helper-audio helper)))
+(defun memrise/session-helper-literal-translation-column (helper)
+  (memrise/session-helper-column-for helper (memrise/helper-audio helper)))
+(defun memrise/session-helper-video-column (helper)
+  (memrise/session-helper-column-for helper (memrise/helper-video helper)))
+
+(defun memrise/session-helper-column-for (helper name)
+  (lexical-let ((pool (car (memrise/helper-pools helper)))
+                (goal name))
+    (memrise/id-for-integer (car (find-if (memrise/session-pool-column-predicate name)
+                                          (memrise/session-pool-columns pool))))))
+
+(defun memrise/session-pool-column-predicate (name)
+  `(lambda (pair)
+    (let* ((column (cdr pair))
+           (kind (memrise/session-pool-column-kind column)))
+      (string= kind name))))
 
 (defun memrise/parse-session-tasks (json)
   (mapcar 'memrise/parse-session-task (assoc-default 'boxes json)))
@@ -227,6 +273,27 @@
      :column-a column-a
      :column-b column-b
      :learn-level learn-level)))
+
+(defun memrise/parse-session-helper (json)
+  (let ((source (memrise/parse-session-helper-source json))
+        (target (memrise/parse-session-helper-target json))
+        (pools (memrise/parse-session-pools json)))
+    (make-memrise/helper
+     :source source
+     :target target
+     :pools pools)))
+
+(defun memrise/parse-session-helper-source (json)
+  (let* ((session (assoc-default 'session json))
+         (course (assoc-default 'course session))
+         (source (assoc-default 'source course)))
+    (assoc-default 'name source)))
+
+(defun memrise/parse-session-helper-target (json)
+  (let* ((session (assoc-default 'session json))
+         (course (assoc-default 'course session))
+         (target (assoc-default 'target course)))
+    (assoc-default 'name target)))
 
 (defun memrise/parse-session-pools (json)
   (mapcar
@@ -247,7 +314,7 @@
 (defun memrise/parse-session-pool-column (json)
   (let* ((id (memrise/integer-for-id (car json)))
          (contents (cdr json))
-         (kind (assoc-default 'kind json))
+         (kind (assoc-default 'label json))
          (keyboard (assoc-default 'keyboard json)))
     `(,id . ,(make-memrise/session-pool-column
               :id id
@@ -255,10 +322,10 @@
               :keyboard keyboard))))
 
 (defun memrise/integer-for-id (symbol)
-  (string-to-int (symbol-name symbol)))
+  (string-to-number (symbol-name symbol)))
 
 (defun memrise/id-for-integer (integer)
-  (make-symbol (number-to-string integer)))
+  (intern (number-to-string integer)))
 
 (defun memrise/test ()
   (interactive)
