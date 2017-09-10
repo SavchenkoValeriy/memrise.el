@@ -1,9 +1,24 @@
-(require 'memrise-request)
+;;; memrise-session.el --- Memrise session, from parsing to execution  -*- lexical-binding: t; -*-
 
-(define-derived-mode memrise-session-mode special-mode "Memrise-session")
+(require 'memrise-request)
+(require 'widget)
+(require 'wid-edit)
+
+(setq memrise-session-mode-map
+  (make-keymap))
+
+(define-derived-mode memrise-session-mode fundamental-mode "Memrise-session")
 
 (defun memrise/session-buffer ()
   (get-buffer-create "*session*"))
+
+(defun memrise/start-learn-session (course-id)
+  "Starts a new memrise learn session"
+  (memrise/start-session course-id "learn"))
+
+(defun memrise/start-review-session (course-id)
+  "Starts a new memrise review/water session"
+  (memrise/start-session course-id "classic_review"))
 
 (defun memrise/start-session (course-id type)
   "Starts a new memrise session"
@@ -13,22 +28,47 @@
         (kill-all-local-variables)
         (erase-buffer)
         (memrise-session-mode)
-        (make-local-variable 'things-to-learn)
-        (memrise/request-session
-         course-id
-         type
-         (lambda (data)
-           (with-current-buffer buffer
-             (message "%S" data))))
+        (make-local-variable 'session)
+        (setq session (memrise/parse-session session-test))
+;;        (memrise/request-session
+;;         course-id
+;;         type
+;;         (lambda (data)
+;;           (with-current-buffer buffer
+;;             (message "%S" data)
+;;             )))
+        (memrise/display-session session)
         (switch-to-buffer buffer)))))
 
-(defun memrise/start-learn-session (course-id)
-  "Starts a new memrise learn session"
-  (memrise/start-session course-id "learn"))
+(defun memrise/display-session (session)
+  (widget-insert (memrise/session-course-name session))
+  (widget-insert "\n\n")
+  (widget-insert (memrise/session-title session))
+  (widget-insert "\n\n")
+  (memrise/display-tasks session (memrise/session-tasks session)))
 
-(defun memrise/start-review-session (course-id)
-  "Starts a new memrise review/water session"
-  (memrise/start-session course-id "classic_review"))
+(defun memrise/display-tasks (session tasks)
+  (lexical-let* ((task (car tasks))
+                 (thing (assoc-default (memrise/session-task-thing-id task)
+                                       (memrise/session-things session))))
+    (make-local-variable 'widget)
+    (defun widget-callback (widget &rest ignore)
+      (progn
+        (message "%S" (widget-value widget))
+        (if (string= (widget-value widget)
+                     (memrise/session-thing-translation thing))
+            (progn
+              (message "Success!")
+              (widget-delete widget)
+              (memrise/display-tasks session (cdr tasks))))))
+    (setq widget
+          (widget-create 'group
+                         `(const ,(memrise/session-thing-text thing))
+                         '(editable-field
+                           :format "Answer:   %v"
+                           :value "value"
+                           :notify callback)))
+    (widget-setup)))
 
 (defstruct memrise/session
   course-name ;; "Russian 2"
@@ -91,7 +131,8 @@
 (defcustom memrise/material-storage-directory
   (concat (file-name-as-directory user-emacs-directory) "memrise")
   "Directory to store data related to request.el."
-  :type 'directory)
+  :type 'directory
+  :group 'memrise)
 
 ;; JSON parsing section
 (defun memrise/parse-session (json)
@@ -250,9 +291,11 @@
 (defun memrise/session-helper-video-column (helper)
   (memrise/session-helper-column-for helper (memrise/helper-video helper)))
 
+(defun memrise/session-helper-keyboard (helper)
+  (memrise/session-helper-text-column helper))
+
 (defun memrise/session-helper-column-for (helper name)
-  (lexical-let ((pool (car (memrise/helper-pools helper)))
-                (goal name))
+  (lexical-let ((pool (car (memrise/helper-pools helper))))
     (memrise/id-for-integer (car (find-if (memrise/session-pool-column-predicate name)
                                           (memrise/session-pool-columns pool))))))
 
