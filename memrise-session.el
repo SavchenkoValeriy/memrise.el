@@ -31,32 +31,36 @@
   (memrise/start-session course-id "classic_review"))
 
 (defstruct memrise/session
-  course-name
-  title
-  helper
-  things
-  tasks
+  course-name ;; "Russian 2"
+  title       ;; "Fuel Your Vocab: Places"
+  helper      ;; object useful for parsing other entities
+  things      ;; things to learn in session
+  tasks       ;; learning tasks
+  keyboard    ;; additional symbols needed for text input
   )
 
 (defstruct memrise/helper
-  source
-  target
-  (audio "Audio")
-  (video "Videos")
-  (literal-translation "Literal translation")
-  pools
+  source                                      ;; label for source (English (US))
+  target                                      ;; label for studied entity (German)
+  (audio "Audio")                             ;; label for audios
+  (video "Videos")                            ;; label for videos
+  (literal-translation "Literal translation") ;; label for literal translations
+  pools                                       ;; pools that contain information about those
   )
 
 (defstruct memrise/session-thing
-  id
-  text
-  translation
-  literal-translation
-  audio
-  video
-  text-options
-  translation-options
-  audio-options
+  id                  ;; unique ID to identify the thing
+  text                ;; text representation
+  translation         ;; translation of a text representation
+  literal-translation ;;
+  audio               ;; audio representation
+  video               ;; video representation
+  ;; the following group represents additional texts/audios to
+  ;; use in a pick-the-right-one quiz
+  text-options        ;;
+  translation-options ;;
+  audio-options       ;;
+  ;; there is no video ones
   )
 
 (defstruct memrise/session-task
