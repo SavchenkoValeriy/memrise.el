@@ -1,8 +1,8 @@
 ;;; memrise-session.el --- Memrise session, from parsing to execution  -*- lexical-binding: t; -*-
 
 (require 'memrise-request)
-(require 'widget)
-(require 'wid-edit)
+(require 'memrise-widget)
+(require 'emms)
 
 (setq memrise-session-mode-map
   (make-keymap))
@@ -61,14 +61,10 @@
               (message "Success!")
               (widget-delete widget)
               (memrise/display-tasks session (cdr tasks))))))
-    (setq widget
-          (widget-create 'group
-                         `(const ,(memrise/session-thing-text thing))
-                         '(editable-field
-                           :format "Answer:   %v"
-                           :value "value"
-                           :notify callback)))
-    (widget-setup)))
+    (setq widget (memrise/create-inverted-multiple-choice-widget thing))
+    (widget-setup)
+    (use-local-map widget-keymap)
+    (emms-play-file (memrise/session-thing-audio thing))))
 
 (defstruct memrise/session
   course-name ;; "Russian 2"
@@ -160,10 +156,11 @@
          (title (assoc-default 'title level)))
     title))
 
-(defun memrise/parse-session-things (json pools)
-  (mapcar
-   `(lambda (thing-json) (memrise/parse-session-thing thing-json pools))
-   (assoc-default 'things json)))
+(defun memrise/parse-session-things (json helper)
+  (lexical-let ((helper helper))
+    (mapcar
+     `(lambda (thing-json) (memrise/parse-session-thing thing-json helper))
+     (assoc-default 'things json))))
 
 (defun memrise/parse-session-thing (json generic-helper)
   (let* ((id (memrise/integer-for-id (car json)))
@@ -300,10 +297,11 @@
                                           (memrise/session-pool-columns pool))))))
 
 (defun memrise/session-pool-column-predicate (name)
-  `(lambda (pair)
-    (let* ((column (cdr pair))
-           (kind (memrise/session-pool-column-kind column)))
-      (string= kind name))))
+  (lexical-let ((name name))
+    (lambda (pair)
+      (let* ((column (cdr pair))
+             (kind (memrise/session-pool-column-kind column)))
+        (string= kind name)))))
 
 (defun memrise/parse-session-tasks (json)
   (mapcar 'memrise/parse-session-task (assoc-default 'boxes json)))
