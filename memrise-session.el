@@ -5,7 +5,7 @@
 (require 'emms)
 
 (setq memrise-session-mode-map
-  (make-keymap))
+      (copy-keymap widget-keymap))
 
 (define-derived-mode memrise-session-mode fundamental-mode "Memrise-session")
 
@@ -63,7 +63,6 @@
               (memrise/display-tasks session (cdr tasks))))))
     (setq widget (memrise/create-inverted-multiple-choice-widget thing))
     (widget-setup)
-    (use-local-map widget-keymap)
     (emms-play-file (memrise/session-thing-audio thing))))
 
 (defstruct memrise/session
