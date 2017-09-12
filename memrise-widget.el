@@ -33,16 +33,34 @@
                         memrise/inverted-multiple-choice-format
                         (memrise/session-format thing)
                         memrise/session-faces))
+                 (choices (memrise/translation-choices thing 4))
                  (result (apply #'widget-create 'radio-button-choice
                                 :format (concat text "%v")
                                 :notify (lambda (widget &rest i)
                                           (message "%S" (widget-value widget)))
                                 (memrise/session-itemize-choices
-                                 (memrise/session-thing-translation-options thing))
+                                 choices)
                                 )))
     (memrise/assign-buttons-keybindings (widget-get result :buttons)
                                         memrise/radio-keys)
     result))
+
+(defun memrise/translation-choices (thing number)
+  "Picks a `number' of translation choices for a quiz."
+  (memrise/construct-choices (memrise/session-thing-translation thing)
+                             (memrise/session-thing-translation-options thing)
+                             number))
+
+(defun memrise/construct-choices (correct incorrect number)
+  "For given choices construct a randomized list of size `number'.
+The result is guaranteed to have `correct' element in it."
+  (let* ((filtered-incorrect (-take (1- number)
+                                    (memrise/shuffle-list incorrect))))
+    (memrise/shuffle-list (cons correct filtered-incorrect))))
+
+(defun memrise/shuffle-list (list)
+  "Shuffles the given `list'"
+  (sort list (lambda (a b) (eq (random 2) 1))))
 
 (defun memrise/session-format (thing)
   (let ((helper (memrise/session-helper session)))
