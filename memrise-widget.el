@@ -72,7 +72,7 @@ The result is guaranteed to have `correct' element in it."
 
 (defun memrise/shuffle-list (list)
   "Shuffles the given `list'"
-  (sort list (lambda (a b) (eq (random 2) 1))))
+  (sort (copy-list list) (lambda (a b) (eq (random 2) 1))))
 
 (defun memrise/session-format (thing)
   (let ((helper (memrise/session-helper session)))
