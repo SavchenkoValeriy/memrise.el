@@ -29,11 +29,13 @@
   "Template for typing widget")
 
 (defun memrise/presentation (thing)
-  (lexical-let ((next next-task))
-    (widget-create 'item
-                   :format (memrise/format-widget memrise/presentation-format
-                                                  thing))
-    (local-set-key (kbd "C-m") 'memrise/display-next-task)))
+  (let ((result (widget-create
+                 'item
+                 :format (memrise/format-widget
+                          memrise/presentation-format
+                          thing))))
+    (local-set-key (kbd "C-m") 'memrise/display-next-task)
+    result))
 
 (defun memrise/create-inverted-multiple-choice-widget (thing)
   (lexical-let* ((text (memrise/format-widget memrise/inverted-multiple-choice-format
