@@ -28,11 +28,16 @@
   "${translation}\nType the ${target} for the ${source} above:\n"
   "Template for typing widget")
 
+(defun memrise/presentation (thing)
+  (lexical-let ((next next-task))
+    (widget-create 'item
+                   :format (memrise/format-widget memrise/presentation-format
+                                                  thing))
+    (local-set-key (kbd "C-m") 'memrise/display-next-task)))
+
 (defun memrise/create-inverted-multiple-choice-widget (thing)
-  (lexical-let* ((text (memrise/format-elements-with-faces
-                        memrise/inverted-multiple-choice-format
-                        (memrise/session-format thing)
-                        memrise/session-faces))
+  (lexical-let* ((text (memrise/format-widget memrise/inverted-multiple-choice-format
+                                              thing))
                  (choices (memrise/translation-choices thing 4))
                  (result (apply #'widget-create 'radio-button-choice
                                 :format (concat text "%v")
@@ -44,6 +49,11 @@
     (memrise/assign-buttons-keybindings (widget-get result :buttons)
                                         memrise/radio-keys)
     result))
+
+(defun memrise/format-widget (format thing)
+  (memrise/format-elements-with-faces format
+                                      (memrise/session-format thing)
+                                      memrise/session-faces))
 
 (defun memrise/translation-choices (thing number)
   "Picks a `number' of translation choices for a quiz."

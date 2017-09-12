@@ -2,6 +2,7 @@
 
 (require 'memrise-request)
 (require 'memrise-widget)
+(require 'dash)
 (require 'emms)
 
 (setq memrise-session-mode-map
@@ -37,33 +38,40 @@
 ;;           (with-current-buffer buffer
 ;;             (message "%S" data)
 ;;             )))
-        (memrise/display-session session)
+        (memrise/display-session)
         (switch-to-buffer buffer)))))
 
-(defun memrise/display-session (session)
+(defun memrise/display-session ()
+  (make-local-variable 'main-widget)
+  (make-local-variable 'next-task)
   (widget-insert (memrise/session-course-name session))
-  (widget-insert "\n\n")
+  (widget-insert "\n")
   (widget-insert (memrise/session-title session))
   (widget-insert "\n\n")
-  (memrise/display-tasks session (memrise/session-tasks session)))
+  (memrise/display-tasks (memrise/session-tasks session)))
 
-(defun memrise/display-tasks (session tasks)
+(defun memrise/display-tasks (tasks)
   (lexical-let* ((task (car tasks))
                  (thing (assoc-default (memrise/session-task-thing-id task)
                                        (memrise/session-things session))))
-    (make-local-variable 'widget)
-    (defun widget-callback (widget &rest ignore)
-      (progn
-        (message "%S" (widget-value widget))
-        (if (string= (widget-value widget)
-                     (memrise/session-thing-translation thing))
-            (progn
-              (message "Success!")
-              (widget-delete widget)
-              (memrise/display-tasks session (cdr tasks))))))
-    (setq widget (memrise/create-inverted-multiple-choice-widget thing))
+    (setq next-task (-partial 'memrise/display-next-task-internal tasks))
+    (setq main-widget nil)
+    (setq main-widget
+          (if (string= (memrise/session-task-kind task)
+                       "presentation")
+              (memrise/presentation thing)
+            (memrise/create-inverted-multiple-choice-widget thing)))
     (widget-setup)
     (emms-play-file (memrise/session-thing-audio thing))))
+
+(defun memrise/display-next-task ()
+  (interactive)
+  (funcall next-task))
+
+(defun memrise/display-next-task-internal (tasks)
+  (if main-widget
+   (widget-delete main-widget))
+  (memrise/display-tasks (cdr tasks)))
 
 (defstruct memrise/session
   course-name ;; "Russian 2"
@@ -283,7 +291,8 @@
 (defun memrise/session-helper-audio-column (helper)
   (memrise/session-helper-column-for helper (memrise/helper-audio helper)))
 (defun memrise/session-helper-literal-translation-column (helper)
-  (memrise/session-helper-column-for helper (memrise/helper-audio helper)))
+  (memrise/session-helper-column-for helper (memrise/helper-literal-translation
+                                             helper)))
 (defun memrise/session-helper-video-column (helper)
   (memrise/session-helper-column-for helper (memrise/helper-video helper)))
 
