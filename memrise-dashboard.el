@@ -20,17 +20,17 @@
 (defun memrise/dashboard ()
   (interactive)
   (lexical-let ((buffer (memrise/dashboard-buffer)))
-    (with-current-buffer buffer
-      (let ((inhibit-read-only t))
-        (kill-all-local-variables)
-        (erase-buffer)
-        (memrise-mode)
-        (make-local-variable 'courses)
-        (setq courses (memrise/parse-courses test))
-        ;;      (memrise/request-dashboard (lambda (data)
-        ;;                                   (memrise/insert-courses (memrise/parse-courses data) buffer)))
-        (memrise/display-courses courses buffer)
-        (switch-to-buffer buffer)))))
+    (memrise/request-dashboard
+     (lambda (data)
+       (with-current-buffer buffer
+         (let ((inhibit-read-only t))
+           (kill-all-local-variables)
+           (erase-buffer)
+           (memrise-mode)
+           (make-local-variable 'courses)
+           (setq courses (memrise/parse-courses data))
+           (memrise/display-courses courses buffer)
+           (switch-to-buffer buffer)))))))
 
 ;; Course structs
 (defstruct memrise/course
