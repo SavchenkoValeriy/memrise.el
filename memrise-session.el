@@ -52,17 +52,23 @@
 
 (defun memrise/display-tasks (tasks)
   (lexical-let* ((task (car tasks))
-                 (thing (assoc-default (memrise/session-task-learnable-id task)
-                                       (memrise/session-learnables session))))
+                 (learnable (assoc-default (memrise/session-task-learnable-id task)
+                                           (memrise/session-learnables session))))
     (setq next-task (-partial 'memrise/display-next-task-internal tasks))
     (setq main-widget nil)
     (setq main-widget
-          (if (string= (memrise/session-task-kind task)
+          (if (string= (memrise/session-task-template task)
                        "presentation")
-              (memrise/presentation thing)
-            (memrise/create-inverted-multiple-choice-widget thing)))
+              (memrise/presentation learnable)
+            (memrise/multiple-choice-widget
+             (memrise/pick-test learnable
+                                (memrise/session-task-learn-level task))
+             memrise/multiple-choice-format 4)))
     (widget-setup)
-    (emms-play-file (memrise/session-thing-audio thing))))
+    (emms-play-file (memrise/session-learnable-audio learnable))))
+
+(defun memrise/pick-test (learnable level)
+  (assoc-default "multiple_choice" (memrise/session-learnable-tests learnable)))
 
 (defun memrise/display-next-task ()
   (interactive)
@@ -165,7 +171,7 @@
   (mapcar 'memrise/parse-session-task (assoc-default 'boxes json)))
 
 (defun memrise/parse-session-task (json)
-  (let ((id (assoc-default 'learnable_id json))
+  (let ((id (string-to-number (assoc-default 'learnable_id json)))
         (template (assoc-default 'template json))
         (learn-level (assoc-default 'learn_session_level json)))
     (make-memrise/session-task
@@ -187,18 +193,17 @@
          (audio (memrise/parse-session-learnable-audio json))
          (literal-translation (memrise/parse-session-learnable-literal-translation json))
          (tests (memrise/parse-session-tests json)))
-    (make-memrise/session-learnable
-     :id id
-     :text text
-     :translation translation
-     :audio audio
-     :literal-translation literal-translation
-     :tests tests)))
+    `(,id . ,(make-memrise/session-learnable
+              :id id
+              :text text
+              :translation translation
+              :audio audio
+              :literal-translation literal-translation
+              :tests tests))))
 
 (defun memrise/parse-session-learnable-audio (json)
-  (memrise/download-audios
-   (memrise/vector-to-list
-    (memrise/parse-column-value json "Audio"))))
+  (memrise/process-audio
+   (memrise/parse-column-value json "Audio")))
 
 (defun memrise/parse-session-learnable-literal-translation (json)
   (memrise/parse-column-value json "Literal translation"))
@@ -218,15 +223,15 @@
   (let* ((kind (symbol-name (car json))) ;; kind would be a string
          (body (cdr json))
          (prompt (memrise/parse-session-test-prompt body))
-         (correct (memrise/vector-to-list
-                   (assoc-default 'correct body)))
+         (correct (assoc-default 'correct body))
          (choices (memrise/vector-to-list
                    (assoc-default 'choices body)))
-         (accepted (assoc-default 'accepted body)))
+         (accepted (memrise/vector-to-list
+                    (assoc-default 'accepted body))))
     ;; if test is an audio test we should download all audios
     (when (s-contains? "audio" kind)
-      (setq correct (memrise/download-audios correct))
-      (setq choices (memrise/download-audios choices)))
+      (setq correct (memrise/process-audio correct))
+      (setq choices (memrise/process-audio choices)))
     `(,kind . ,(make-memrise/session-test
                 :prompt prompt
                 :correct correct
@@ -236,12 +241,20 @@
 (defun memrise/parse-session-test-prompt (json)
   (let* ((body (assoc-default 'prompt json))
          (text (assoc-default 'text body))
-         (audio (memrise/download-audios
-                 (memrise/vector-to-list
-                  (assoc-default 'audio body)))))
+         (audio (memrise/process-audio
+                 (assoc-default 'audio body))))
    (make-memrise/session-test-prompt
     :text text
     :audio audio)))
+
+(defun memrise/process-audio (vector-or-list)
+  (let ((result (memrise/download-audios
+                 (if (vectorp vector-or-list)
+                     (memrise/vector-to-list vector-or-list)
+                   vector-or-list))))
+    (if (eq (length result) 1)
+        (car result)
+      result)))
 
 (defun memrise/download-audios (urls)
   (mapcar 'memrise/download-audio urls))
