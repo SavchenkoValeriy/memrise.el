@@ -13,34 +13,31 @@
   "Template for presentation of a new thing")
 
 (defvar memrise/multiple-choice-format
-  "${translation}\nSelect the correct ${target} for the ${source} above:\n"
+  "${prompt}\nSelect the correct ${target} for the ${source} above:\n"
   "Template for multiple-choice widget")
 
-(defvar memrise/inverted-multiple-choice-format
-  "${text}\nSelect the correct ${source} for the ${target} above:\n"
+(defvar memrise/reversed-multiple-choice-format
+  "${prompt}\nSelect the correct ${source} for the ${target} above:\n"
   "Template for inverted-multiple-choice widget")
 
 (defvar memrise/audio-multiple-choice-format
-  "${translation}\nChoose the correct ${target} for the ${source}\n"
+  "${prompt}\nChoose the correct ${target} for the ${source}\n"
   "Template for audio-multiple-choice widget")
 
 (defvar memrise/typing-format
-  "${translation}\nType the ${target} for the ${source} above:\n"
+  "${prompt}\nType the ${target} for the ${source} above:\n"
   "Template for typing widget")
 
-(defun memrise/presentation (thing)
-  (let ((result (widget-create
-                 'item
+(defun memrise/presentation (learnable)
+  (local-set-key (kbd "C-m") 'memrise/display-next-task)
+  (widget-create 'item
                  :format (memrise/format-widget
                           memrise/presentation-format
-                          thing))))
-    (local-set-key (kbd "C-m") 'memrise/display-next-task)
-    result))
+                          learnable)))
 
-(defun memrise/create-inverted-multiple-choice-widget (thing)
-  (lexical-let* ((text (memrise/format-widget memrise/inverted-multiple-choice-format
-                                              thing))
-                 (choices (memrise/translation-choices thing 4))
+(defun memrise/multiple-choice-widget (test format number)
+  (lexical-let* ((text (memrise/format-widget format test))
+                 (choices (memrise/widget-choices test number))
                  (result (apply #'widget-create 'radio-button-choice
                                 :format (concat text "%v")
                                 :notify (lambda (widget &rest i)
@@ -52,15 +49,15 @@
                                         memrise/radio-keys)
     result))
 
-(defun memrise/format-widget (format thing)
+(defun memrise/format-widget (format test-or-learnable)
   (memrise/format-elements-with-faces format
-                                      (memrise/session-format thing)
+                                      (memrise/session-format test-or-learnable)
                                       memrise/session-faces))
 
-(defun memrise/translation-choices (thing number)
+(defun memrise/widget-choices (test number)
   "Picks a `number' of translation choices for a quiz."
-  (memrise/construct-choices (memrise/session-thing-translation thing)
-                             (memrise/session-thing-translation-options thing)
+  (memrise/construct-choices (memrise/session-test-correct test)
+                             (memrise/session-test-choices test)
                              number))
 
 (defun memrise/construct-choices (correct incorrect number)
@@ -74,13 +71,19 @@ The result is guaranteed to have `correct' element in it."
   "Shuffles the given `list'"
   (sort (copy-list list) (lambda (a b) (eq (random 2) 1))))
 
-(defun memrise/session-format (thing)
-  (let ((helper (memrise/session-helper session)))
-    `((text . ,(memrise/session-thing-text thing))
-      (translation . ,(memrise/session-thing-translation thing))
-      (literal-translation . ,(memrise/session-thing-literal-translation thing))
-      (source . ,(memrise/helper-source helper))
-      (target . ,(memrise/helper-target helper)))))
+(defun memrise/session-format (test-or-learnable)
+  (let ((prompt (make-memrise/session-test-prompt))
+        (learnable (make-memrise/session-learnable)))
+    (when (memrise/session-test-p test-or-learnable)
+      (setq prompt (memrise/session-test-prompt test-or-learnable)))
+    (when (memrise/session-learnable-p test-or-learnable)
+      (setq learnable test-or-learnable))
+    `((text . ,(memrise/session-learnable-text learnable))
+      (translation . ,(memrise/session-learnable-translation learnable))
+      (literal-translation . ,(or (memrise/session-learnable-literal-translation learnable) ""))
+      (prompt . ,(memrise/session-test-prompt-text prompt))
+      (source . ,(memrise/session-source session))
+      (target . ,(memrise/session-target session)))))
 
 (defun memrise/session-itemize-choices (choices)
   (mapcar (lambda (x) `(item ,x)) choices))

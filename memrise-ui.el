@@ -82,6 +82,7 @@
 (defvar memrise/session-faces
   '((text . memrise-session-thing)
     (translation . memrise-session-thing)
+    (prompt . memrise-session-thing)
     (target . memrise-session-keyword)
     (source . memrise-session-keyword)
     (literal-translation . memrise-session-literal-translation))
