@@ -184,8 +184,8 @@
                               (assoc-default 'item json)))
          (translation (assoc-default 'value
                                      (assoc-default 'definition json)))
-         (audio nil)
-         (literal-translation nil)
+         (audio (memrise/parse-session-learnable-audio json))
+         (literal-translation (memrise/parse-session-learnable-literal-translation json))
          (tests (memrise/parse-session-tests json)))
     (make-memrise/session-learnable
      :id id
@@ -194,6 +194,21 @@
      :audio audio
      :literal-translation literal-translation
      :tests tests)))
+
+(defun memrise/parse-session-learnable-audio (json)
+  (memrise/download-audios
+   (memrise/vector-to-list
+    (memrise/parse-column-value json "Audio"))))
+
+(defun memrise/parse-session-learnable-literal-translation (json)
+  (memrise/parse-column-value json "Literal translation"))
+
+(defun memrise/parse-column-value (json label)
+  (let ((column (find-if (lambda (x)
+                           (string= (assoc-default 'label x)
+                                    label))
+                         (assoc-default 'columns json))))
+    (assoc-default 'value column)))
 
 (defun memrise/parse-session-tests (json)
   (mapcar 'memrise/parse-session-test
