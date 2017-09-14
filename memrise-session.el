@@ -26,20 +26,22 @@
   "Starts a new memrise session"
   (lexical-let ((buffer (memrise/session-buffer)))
     (with-current-buffer buffer
-      (memrise/request-session
-       course-id
-       type
-       (lambda (data)
-         (with-current-buffer buffer
-           (let ((inhibit-read-only t))
-             (message "%S" data)
-             (kill-all-local-variables)
-             (erase-buffer)
-             (memrise-session-mode)
-             (make-local-variable 'session)
-             (setq session (memrise/parse-session data))
-             (memrise/display-session)))))
+;;      (memrise/request-session
+;;       course-id
+;;       type
+;;       'memrise/start-session-internal)
+      (memrise/start-session-internal session-test)
       (switch-to-buffer buffer))))
+
+(defun memrise/start-session-internal (json)
+  (with-current-buffer (memrise/session-buffer)
+    (let ((inhibit-read-only t))
+      (kill-all-local-variables)
+      (erase-buffer)
+      (memrise-session-mode)
+      (make-local-variable 'session)
+      (setq session (memrise/parse-session json))
+      (memrise/display-session))))
 
 (defun memrise/display-session ()
   (make-local-variable 'main-widget)
