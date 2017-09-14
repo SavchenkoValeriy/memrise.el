@@ -106,6 +106,10 @@
   )
 
 (defstruct memrise/session-test
+  kind     ;; one of '("multiple_choice"
+           ;;          "reversed_multiple_choice"
+           ;;          "audio_multiple_choice"
+           ;;          "typing")
   prompt   ;; information for a test title
   correct  ;; correct answer
   choices  ;; other choices (do not include correct)
@@ -235,6 +239,7 @@
       (setq correct (memrise/process-audio correct))
       (setq choices (memrise/process-audio choices)))
     `(,kind . ,(make-memrise/session-test
+                :kind kind
                 :prompt prompt
                 :correct correct
                 :choices choices
