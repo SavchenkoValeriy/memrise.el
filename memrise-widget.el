@@ -40,6 +40,18 @@
   :type '(string)
   :group 'memrise)
 
+(defcustom memrise/audio-radio-on
+  (all-the-icons-faicon "play-circle" :v-adjust 0.0)
+  "Symbol to show for chosen audio radio button"
+  :type '(string)
+  :group 'memrise)
+
+(defcustom memrise/audio-radio-off
+  memrise/radio-off
+  "Symbol to show for not chosen audio radio button"
+  :type '(string)
+  :group 'memrise)
+
 (defun memrise/presentation (learnable)
   (let ((play-presentation (memrise/make-interactive
                             (-partial 'memrise/play-audio
@@ -56,24 +68,31 @@
   (pcase (memrise/session-test-kind test)
     ("multiple_choice"          (memrise/multiple-choice-widget test))
     ("reversed_multiple_choice" (memrise/reversed-multiple-choice-widget test))
-    ("audio_multiple_choice"    (memrise/audio-multiple-choice test))
+    ("audio_multiple_choice"    (memrise/audio-multiple-choice-widget test))
     ("typing"                   (memrise/typing-widget test))))
 
 (defun memrise/multiple-choice-widget (test)
   (widget-create 'memrise/choice-widget
                  :test test
                  :prefix-format memrise/multiple-choice-format
-                 :requires-audio
-                 :notify (lambda (widget &rest i)
-                           (message "%S" (widget-value widget)))))
+                 :requires-audio nil))
 
 (defun memrise/reversed-multiple-choice-widget (test)
-  (widget-create 'item
-                 "REVERSED"))
+  (widget-create 'memrise/choice-widget
+                 :test test
+                 :prefix-format memrise/reversed-multiple-choice-format
+                 :requires-audio t))
 
 (defun memrise/audio-multiple-choice-widget (test)
-  (widget-create 'item
-                 "AUDIO"))
+  (widget-create 'memrise/choice-widget
+                 :test test
+                 :prefix-format memrise/audio-multiple-choice-format
+                 :on memrise/audio-radio-on
+                 :off memrise/audio-radio-off
+                 :requires-audio nil
+                 :notify (memrise/make-widget-callback
+                          'memrise/audio-multiple-choice-widget-play)
+                 :instant-submit nil))
 
 (defun memrise/typing-multiple-choice-widget (test)
   (widget-create 'item
@@ -89,6 +108,8 @@
   :on memrise/radio-on
   :off memrise/radio-off
   :size 4
+  :submit 'memrise/choice-widget-submit-answer
+  :instant-submit t
   )
 
 (defun memrise/choice-widget-create (widget)
@@ -99,6 +120,8 @@
          (on (widget-get widget :on))
          (off (widget-get widget :off))
          (size (widget-get widget :size))
+         (submit (widget-get widget :submit))
+         (instant-submit (widget-get widget :instant-submit))
          (audio (memrise/session-test-prompt-audio
                  (memrise/session-test-prompt test)))
          (text (memrise/format-widget prefix-format test))
@@ -106,6 +129,8 @@
     (widget-put widget :button-args `(:on ,on :off ,off))
     (widget-put widget :format (concat text "%v"))
     (widget-put widget :args (memrise/session-itemize-choices choices))
+    (when instant-submit
+      (widget-put widget :notify (lambda (widget &rest event) (funcall submit widget))))
     (widget-default-create widget)
     (when assign-keys
       (memrise/assign-buttons-keybindings (widget-get widget :buttons)
@@ -115,6 +140,17 @@
        (funcall play)
        (local-set-key (kbd "C-r") (memrise/make-interactive play))))))
 
+(defun memrise/choice-widget-submit-answer (widget)
+  (let ((correct (memrise/session-test-correct (widget-get widget :test)))
+        (given (widget-value widget)))
+    (if (string= correct given)
+        (message "Correct!")
+      (message "Oops, correct answer is \"%s\"" correct))
+    (run-at-time "0.5 sec" nil 'memrise/display-next-task)))
+
+(defun memrise/audio-multiple-choice-widget-play (widget)
+  (memrise/play-audio (widget-value widget)))
+
 (defun memrise/play-audio (audio)
   "Plays given `audio' file"
   (emms-play-file audio))
@@ -122,6 +158,10 @@
 (defun memrise/make-interactive (fun)
   "Returns interactive version of the given `fun'"
   (lambda () (interactive) (funcall fun)))
+
+(defun memrise/make-widget-callback (fun)
+  "Returns a version of the given `fun' applicable for being a widget callback"
+  (lambda (widget &rest ignored) (funcall fun widget)))
 
 (defun memrise/format-widget (format test-or-learnable)
   (memrise/format-elements-with-faces format
