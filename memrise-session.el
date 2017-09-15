@@ -62,10 +62,9 @@
           (if (string= (memrise/session-task-template task)
                        "presentation")
               (memrise/presentation learnable)
-            (memrise/multiple-choice-widget
+            (memrise/display-test
              (memrise/pick-test learnable
-                                (memrise/session-task-learn-level task))
-             memrise/multiple-choice-format 4)))
+                                (memrise/session-task-learn-level task)))))
     (widget-setup)))
 
 (defun memrise/pick-test (learnable level)

@@ -28,6 +28,18 @@
   "${prompt}\nType the ${target} for the ${source} above:\n"
   "Template for typing widget")
 
+(defcustom memrise/radio-on
+  (all-the-icons-faicon "dot-circle-o" :v-adjust 0.0)
+  "Symbol to show for chosen radio button"
+  :type '(string)
+  :group 'memrise)
+
+(defcustom memrise/radio-off
+  (all-the-icons-faicon "circle-o" :v-adjust 0.0)
+  "Symbol to show for not chosen radio button"
+  :type '(string)
+  :group 'memrise)
+
 (defun memrise/presentation (learnable)
   (let ((play-presentation (memrise/make-interactive
                             (-partial 'memrise/play-audio
@@ -40,21 +52,68 @@
                             memrise/presentation-format
                             learnable))))
 
-(defun memrise/multiple-choice-widget (test-for-widget format number)
-  (lexical-let* ((text (memrise/format-widget format test-for-widget))
-                 (choices (memrise/widget-choices test-for-widget number))
-                 (result (apply #'widget-create 'radio-button-choice
-                                :format (concat text "%v")
-                                :notify (lambda (widget &rest i)
-                                          (message "%S" (widget-value widget)))
-                                (memrise/session-itemize-choices
-                                 choices)
-                                )))
-    (make-local-variable 'test)
-    (setq test test-for-widget)
-    (memrise/assign-buttons-keybindings (widget-get result :buttons)
-                                        memrise/radio-keys)
-    result))
+(defun memrise/display-test (test)
+  (pcase (memrise/session-test-kind test)
+    ("multiple_choice"          (memrise/multiple-choice-widget test))
+    ("reversed_multiple_choice" (memrise/reversed-multiple-choice-widget test))
+    ("audio_multiple_choice"    (memrise/audio-multiple-choice test))
+    ("typing"                   (memrise/typing-widget test))))
+
+(defun memrise/multiple-choice-widget (test)
+  (widget-create 'memrise/choice-widget
+                 :test test
+                 :prefix-format memrise/multiple-choice-format
+                 :requires-audio
+                 :notify (lambda (widget &rest i)
+                           (message "%S" (widget-value widget)))))
+
+(defun memrise/reversed-multiple-choice-widget (test)
+  (widget-create 'item
+                 "REVERSED"))
+
+(defun memrise/audio-multiple-choice-widget (test)
+  (widget-create 'item
+                 "AUDIO"))
+
+(defun memrise/typing-multiple-choice-widget (test)
+  (widget-create 'item
+                 "TYPING"))
+
+(define-widget 'memrise/choice-widget 'radio-button-choice
+  "Multiple choice widget for memrise tests"
+  :test nil
+  :prefix-format ""
+  :requires-audio t
+  :create 'memrise/choice-widget-create
+  :assign-keys t
+  :on memrise/radio-on
+  :off memrise/radio-off
+  :size 4
+  )
+
+(defun memrise/choice-widget-create (widget)
+  (let* ((test (widget-get widget :test))
+         (prefix-format (widget-get widget :prefix-format))
+         (requires-audio (widget-get widget :requires-audio))
+         (assign-keys (widget-get widget :assign-keys))
+         (on (widget-get widget :on))
+         (off (widget-get widget :off))
+         (size (widget-get widget :size))
+         (audio (memrise/session-test-prompt-audio
+                 (memrise/session-test-prompt test)))
+         (text (memrise/format-widget prefix-format test))
+         (choices (memrise/widget-choices test size)))
+    (widget-put widget :button-args `(:on ,on :off ,off))
+    (widget-put widget :format (concat text "%v"))
+    (widget-put widget :args (memrise/session-itemize-choices choices))
+    (widget-default-create widget)
+    (when assign-keys
+      (memrise/assign-buttons-keybindings (widget-get widget :buttons)
+                                          memrise/radio-keys))
+    (when requires-audio
+      (let ((play (-partial 'memrise/play-audio audio)))
+       (funcall play)
+       (local-set-key (kbd "C-r") (memrise/make-interactive play))))))
 
 (defun memrise/play-audio (audio)
   "Plays given `audio' file"
@@ -101,7 +160,7 @@ The result is guaranteed to have `correct' element in it."
       (target . ,(memrise/session-target session)))))
 
 (defun memrise/session-itemize-choices (choices)
-  (mapcar (lambda (x) `(item ,x)) choices))
+  (mapcar (lambda (x) `(item :value ,x)) choices))
 
 (defun memrise/assign-buttons-keybindings (buttons bindings)
   (mapc (lambda (args) (apply 'memrise/assign-button-keybinding args))
