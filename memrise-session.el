@@ -66,8 +66,7 @@
              (memrise/pick-test learnable
                                 (memrise/session-task-learn-level task))
              memrise/multiple-choice-format 4)))
-    (widget-setup)
-    (emms-play-file (memrise/session-learnable-audio learnable))))
+    (widget-setup)))
 
 (defun memrise/pick-test (learnable level)
   (assoc-default "multiple_choice" (memrise/session-learnable-tests learnable)))
@@ -78,8 +77,14 @@
 
 (defun memrise/display-next-task-internal (tasks)
   (if main-widget
-   (widget-delete main-widget))
+      (widget-delete main-widget))
+  (memrise/reset-session-bindings)
   (memrise/display-tasks (cdr tasks)))
+
+(defun memrise/reset-session-bindings ()
+  (setq memrise-session-mode-map
+        (copy-keymap widget-keymap))
+  (use-local-map memrise-session-mode-map))
 
 (defstruct memrise/session
   course-name ;; "Russian 2"

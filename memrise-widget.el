@@ -29,15 +29,20 @@
   "Template for typing widget")
 
 (defun memrise/presentation (learnable)
-  (local-set-key (kbd "C-m") 'memrise/display-next-task)
-  (widget-create 'item
-                 :format (memrise/format-widget
-                          memrise/presentation-format
-                          learnable)))
+  (let ((play-presentation (memrise/make-interactive
+                            (-partial 'memrise/play-audio
+                                      (memrise/session-learnable-audio learnable)))))
+    (local-set-key (kbd "C-m") 'memrise/display-next-task)
+    (local-set-key (kbd "C-r") play-presentation)
+    (funcall play-presentation)
+    (widget-create 'item
+                   :format (memrise/format-widget
+                            memrise/presentation-format
+                            learnable))))
 
-(defun memrise/multiple-choice-widget (test format number)
-  (lexical-let* ((text (memrise/format-widget format test))
-                 (choices (memrise/widget-choices test number))
+(defun memrise/multiple-choice-widget (test-for-widget format number)
+  (lexical-let* ((text (memrise/format-widget format test-for-widget))
+                 (choices (memrise/widget-choices test-for-widget number))
                  (result (apply #'widget-create 'radio-button-choice
                                 :format (concat text "%v")
                                 :notify (lambda (widget &rest i)
@@ -45,9 +50,19 @@
                                 (memrise/session-itemize-choices
                                  choices)
                                 )))
+    (make-local-variable 'test)
+    (setq test test-for-widget)
     (memrise/assign-buttons-keybindings (widget-get result :buttons)
                                         memrise/radio-keys)
     result))
+
+(defun memrise/play-audio (audio)
+  "Plays given `audio' file"
+  (emms-play-file audio))
+
+(defun memrise/make-interactive (fun)
+  "Returns interactive version of the given `fun'"
+  (lambda () (interactive) (funcall fun)))
 
 (defun memrise/format-widget (format test-or-learnable)
   (memrise/format-elements-with-faces format
