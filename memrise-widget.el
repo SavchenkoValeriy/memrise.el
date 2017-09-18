@@ -92,7 +92,8 @@
                  :requires-audio nil
                  :notify (memrise/make-widget-callback
                           'memrise/audio-multiple-choice-widget-play)
-                 :instant-submit nil))
+                 :instant-submit nil
+                 :labels (number-sequence 1 8)))
 
 (defun memrise/typing-multiple-choice-widget (test)
   (widget-create 'item
@@ -110,6 +111,7 @@
   :size 4
   :submit 'memrise/choice-widget-submit-answer
   :instant-submit t
+  :labels '()
   )
 
 (defun memrise/choice-widget-create (widget)
@@ -122,6 +124,7 @@
          (size (widget-get widget :size))
          (submit (widget-get widget :submit))
          (instant-submit (widget-get widget :instant-submit))
+         (labels (widget-get widget :labels))
          (audio (memrise/session-test-prompt-audio
                  (memrise/session-test-prompt test)))
          (text (memrise/format-widget prefix-format test))
@@ -129,12 +132,15 @@
     (widget-put widget :button-args `(:on ,on :off ,off))
     (widget-put widget :format (concat text "%v"))
     (widget-put widget :args (memrise/session-itemize-choices choices))
-    (when instant-submit
-      (widget-put widget :notify (lambda (widget &rest event) (funcall submit widget))))
+    (if instant-submit
+        (widget-put widget :notify (lambda (widget &rest event) (funcall submit widget)))
+      (local-set-key (kbd "C-m") (memrise/make-interactive (-partial submit widget))))
     (widget-default-create widget)
     (when assign-keys
       (memrise/assign-buttons-keybindings (widget-get widget :buttons)
                                           memrise/radio-keys))
+    (when labels
+      (memrise/assign-labels (widget-get widget :children) labels))
     (when requires-audio
       (let ((play (-partial 'memrise/play-audio audio)))
        (funcall play)
@@ -143,13 +149,15 @@
 (defun memrise/choice-widget-submit-answer (widget)
   (let ((correct (memrise/session-test-correct (widget-get widget :test)))
         (given (widget-value widget)))
-    (if (string= correct given)
-        (message "Correct!")
-      (message "Oops, correct answer is \"%s\"" correct))
-    (mapc (lambda (x) (widget-apply x :deactivate))
-          (widget-get widget :buttons))
-    (memrise/reset-session-bindings)
-    (run-at-time "0.5 sec" nil 'memrise/display-next-task)))
+    (if (not given)
+        (message "Please, give an answer first!")
+      (if (string= correct given)
+          (message "Correct!")
+        (message "Oops, correct answer is \"%s\"" correct))
+      (mapc (lambda (x) (widget-apply x :deactivate))
+            (widget-get widget :buttons))
+      (memrise/reset-session-bindings)
+      (run-at-time "0.5 sec" nil 'memrise/display-next-task))))
 
 (defun memrise/audio-multiple-choice-widget-play (widget)
   (memrise/play-audio (widget-value widget)))
@@ -221,6 +229,16 @@ The result is guaranteed to have `correct' element in it."
     (memrise/redraw-widget button)
     (local-set-key (char-to-string keybinding)
                    (lambda () (interactive) (widget-apply button :action)))))
+
+(defun memrise/assign-labels (items labels)
+  "Show `labels' instead of `items'' values"
+  (mapc (lambda (pair) (memrise/assign-label (car pair) (cdr pair)))
+        (-zip items labels)))
+
+(defun memrise/assign-label (item label)
+  "Show `label' instead of `item''s values"
+  (widget-put item :format (format "%S\n" label))
+  (memrise/redraw-widget item))
 
 (defun memrise/redraw-widget (widget)
   (widget-value-set widget (widget-value widget)))
