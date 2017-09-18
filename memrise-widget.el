@@ -64,26 +64,21 @@
                             memrise/presentation-format
                             learnable))))
 
-(defun memrise/display-test (test)
-  (pcase (memrise/session-test-kind test)
-    ("multiple_choice"          (memrise/multiple-choice-widget test))
-    ("reversed_multiple_choice" (memrise/reversed-multiple-choice-widget test))
-    ("audio_multiple_choice"    (memrise/audio-multiple-choice-widget test))
-    ("typing"                   (memrise/typing-widget test))))
-
-(defun memrise/multiple-choice-widget (test)
+(defun memrise/multiple-choice-widget (test number)
   (widget-create 'memrise/choice-widget
                  :test test
                  :prefix-format memrise/multiple-choice-format
-                 :requires-audio nil))
+                 :requires-audio nil
+                 :size number))
 
-(defun memrise/reversed-multiple-choice-widget (test)
+(defun memrise/reversed-multiple-choice-widget (test number)
   (widget-create 'memrise/choice-widget
                  :test test
                  :prefix-format memrise/reversed-multiple-choice-format
-                 :requires-audio t))
+                 :requires-audio t
+                 :size number))
 
-(defun memrise/audio-multiple-choice-widget (test)
+(defun memrise/audio-multiple-choice-widget (test number)
   (widget-create 'memrise/choice-widget
                  :test test
                  :prefix-format memrise/audio-multiple-choice-format
@@ -95,9 +90,8 @@
                  :instant-submit nil
                  :labels (number-sequence 1 8)))
 
-(defun memrise/typing-multiple-choice-widget (test)
-  (widget-create 'item
-                 "TYPING"))
+(defun memrise/typing-widget (test)
+  (widget-create 'item "TYPING"))
 
 (define-widget 'memrise/choice-widget 'radio-button-choice
   "Multiple choice widget for memrise tests"
@@ -188,9 +182,17 @@
 (defun memrise/construct-choices (correct incorrect number)
   "For given choices construct a randomized list of size `number'.
 The result is guaranteed to have `correct' element in it."
-  (let* ((filtered-incorrect (-take (1- number)
-                                    (memrise/shuffle-list incorrect))))
+  (let* ((filtered-incorrect (memrise/random-sublist incorrect
+                                                     (1- number))))
     (memrise/shuffle-list (cons correct filtered-incorrect))))
+
+(defun memrise/random-element (list)
+  "Picks a random element from `list'"
+  (car (memrise/random-sublist list 1)))
+
+(defun memrise/random-sublist (list number)
+  "Returns `number' of random elements from `list'"
+  (-take number (memrise/shuffle-list list)))
 
 (defun memrise/shuffle-list (list)
   "Shuffles the given `list'"

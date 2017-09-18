@@ -62,13 +62,60 @@
           (if (string= (memrise/session-task-template task)
                        "presentation")
               (memrise/presentation learnable)
-            (memrise/display-test
-             (memrise/pick-test learnable
-                                (memrise/session-task-learn-level task)))))
+            (memrise/pick-and-display-test learnable
+                                           (memrise/session-task-learn-level task))))
     (widget-setup)))
 
-(defun memrise/pick-test (learnable level)
-  (assoc-default "multiple_choice" (memrise/session-learnable-tests learnable)))
+(defun memrise/pick-and-display-test (learnable level)
+  (let ((tests (memrise/session-learnable-tests learnable))
+        (number-of-choices (memrise/decide-number-of-choices level)))
+    (memrise/display-test (memrise/pick-test tests level)
+                          number-of-choices)))
+
+(defvar memrise/minimal-number-of-choices 4)
+(defvar memrise/average-number-of-choices 6)
+(defvar memrise/maximal-number-of-choices 8)
+
+(defun memrise/decide-number-of-choices (level)
+  (memrise/icase level
+    `((1 . 2) ,memrise/minimal-number-of-choices)
+    `((3 . 4) ,memrise/average-number-of-choices)
+    `((5 . 6) ,memrise/maximal-number-of-choices)
+    ;; words for review have `level' == `nil'
+    `(nil     ,memrise/maximal-number-of-choices)))
+
+(defun memrise/pick-test (tests level)
+  "According to the given `level' picks one of the `tests'"
+  (if (eq level 1)
+      (assoc-default "multiple_choice")
+    (cdr (memrise/random-element tests))))
+
+(defun memrise/display-test (test number)
+  (pcase (memrise/session-test-kind test)
+    ("multiple_choice"          (memrise/multiple-choice-widget test number))
+    ("reversed_multiple_choice" (memrise/reversed-multiple-choice-widget test number))
+    ("audio_multiple_choice"    (memrise/audio-multiple-choice-widget
+                                 test memrise/minimal-number-of-choices))
+    ("typing"                   (memrise/typing-widget test))))
+
+(defun memrise/icase (value &rest args)
+  (let* ((head (car args))
+         (range (car head))
+         (result (cadr head)))
+    (cond
+     ((not head) nil) ;; the list of args is over
+     ;; if value \in range -> return corresponding result
+     ((memrise/icase-in-range-p value range) result)
+     ;; try other arguments
+     (t (apply 'memrise/icase value (cdr args))))))
+
+(defun memrise/icase-in-range-p (value range)
+  (cond
+   ((-cons-pair? range) (and value ;; value can be `nil'
+                             (>= value (car range))
+                             (<= value (cdr range))))
+   ;; if range is not actually a range, simply compare values
+   (t (eq value range))))
 
 (defun memrise/display-next-task ()
   (interactive)
@@ -113,7 +160,8 @@
   kind     ;; one of '("multiple_choice"
            ;;          "reversed_multiple_choice"
            ;;          "audio_multiple_choice"
-           ;;          "typing")
+           ;;          "typing"
+           ;;          "tapping")
   prompt   ;; information for a test title
   correct  ;; correct answer
   choices  ;; other choices (do not include correct)
@@ -127,9 +175,6 @@
 
 (defvar memrise/video-quality 'medium
   "Memrise video quality, one of '(low medium high)")
-
-(defvar memrise/material-storage-url "https://d2rhekw5qr4gcj.cloudfront.net/"
-  "Memrise web-site used to download all audio/video materials")
 
 (defcustom memrise/material-storage-directory
   (concat (file-name-as-directory user-emacs-directory) "memrise")
