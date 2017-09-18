@@ -146,6 +146,9 @@
     (if (string= correct given)
         (message "Correct!")
       (message "Oops, correct answer is \"%s\"" correct))
+    (mapc (lambda (x) (widget-apply x :deactivate))
+          (widget-get widget :buttons))
+    (memrise/reset-session-bindings)
     (run-at-time "0.5 sec" nil 'memrise/display-next-task)))
 
 (defun memrise/audio-multiple-choice-widget-play (widget)
