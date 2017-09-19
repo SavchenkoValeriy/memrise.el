@@ -11,6 +11,19 @@
 
 (define-derived-mode memrise-session-mode fundamental-mode "Memrise-session")
 
+(add-hook 'memrise-session-mode 'memrise/turn-off-completions)
+
+(defun memrise/turn-off-completions ()
+  "Turn off completion minor modes during session.
+Completion doesn't really help a learning process."
+  (memrise/turn-off-minor-mode 'company-mode)
+  (memrise/turn-off-minor-mode 'auto-complete-mode))
+
+(defun memrise/turn-off-minor-mode (mode)
+  "Turn off given minor `mode' if it's active."
+  (when (bound-and-true-p mode)
+    (funcall mode nil)))
+
 (defun memrise/session-buffer ()
   (get-buffer-create "*session*"))
 
