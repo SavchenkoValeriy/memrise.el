@@ -90,11 +90,8 @@
                  :instant-submit nil
                  :labels (number-sequence 1 8)))
 
-(defun memrise/typing-widget (test)
-  (widget-create 'item "TYPING"))
-
 (define-widget 'memrise/choice-widget 'radio-button-choice
-  "Multiple choice widget for memrise tests"
+  "Multiple choice widget for memrise tests."
   :test nil
   :prefix-format ""
   :requires-audio t
@@ -109,20 +106,20 @@
   )
 
 (defun memrise/choice-widget-create (widget)
-  (let* ((test (widget-get widget :test))
-         (prefix-format (widget-get widget :prefix-format))
+  (let* ((test           (widget-get widget :test))
+         (prefix-format  (widget-get widget :prefix-format))
          (requires-audio (widget-get widget :requires-audio))
-         (assign-keys (widget-get widget :assign-keys))
-         (on (widget-get widget :on))
-         (off (widget-get widget :off))
-         (size (widget-get widget :size))
-         (submit (widget-get widget :submit))
+         (assign-keys    (widget-get widget :assign-keys))
+         (on             (widget-get widget :on))
+         (off            (widget-get widget :off))
+         (size           (widget-get widget :size))
+         (submit         (widget-get widget :submit))
          (instant-submit (widget-get widget :instant-submit))
-         (labels (widget-get widget :labels))
-         (audio (memrise/session-test-prompt-audio
-                 (memrise/session-test-prompt test)))
-         (text (memrise/format-widget prefix-format test))
-         (choices (memrise/widget-choices test size)))
+         (labels         (widget-get widget :labels))
+         (audio          (memrise/session-test-prompt-audio
+                          (memrise/session-test-prompt test)))
+         (text           (memrise/format-widget prefix-format test))
+         (choices        (memrise/widget-choices test size)))
     (widget-put widget :button-args `(:on ,on :off ,off))
     (widget-put widget :format (concat text "%v"))
     (widget-put widget :args (memrise/session-itemize-choices choices))
@@ -141,7 +138,7 @@
        (local-set-key (kbd "C-r") (memrise/make-interactive play))))))
 
 (defun memrise/choice-widget-submit-answer (widget)
-  (let ((correct (memrise/session-test-correct (widget-get widget :test)))
+  (let ((correct (memrise/get-correct-answer widget))
         (given (widget-value widget)))
     (if (not given)
         (message "Please, give an answer first!")
@@ -153,19 +150,57 @@
       (memrise/reset-session-bindings)
       (run-at-time "0.5 sec" nil 'memrise/display-next-task))))
 
+(defun memrise/typing-widget (test)
+  (widget-create 'memrise/text-input-widget
+                 :test test
+                 :prefix-format memrise/typing-format
+                 :instant-submit t))
+
+(define-widget 'memrise/text-input-widget 'editable-field
+  "Text input widget for memrise tests."
+  :test nil
+  :prefix-format ""
+  :create 'memrise/text-input-widget-create
+  :requires-audio nil
+  :instant-submit nil
+  :assign-keys t
+  :input-method 'default
+  :submit 'memrise/choice-widget-submit-answer)
+
+(defun memrise/text-input-widget-create (widget)
+  (lexical-let* ((test           (widget-get widget :test))
+                 (prefix-format  (widget-get widget :prefix-format))
+                 (requires-audio (widget-get widget :requires-audio))
+                 (assign-keys    (widget-get widget :assign-keys))
+                 (submit         (widget-get widget :submit))
+                 (instant-submit (widget-get widget :instant-submit))
+                 (audio          (memrise/session-test-prompt-audio
+                                  (memrise/session-test-prompt test)))
+                 (text           (memrise/format-widget prefix-format test)))
+    (widget-put widget :format (concat text "%v"))
+    (widget-put widget :notify (lambda (widget &rest _)
+                                 (when (string= (widget-value widget)
+                                                (memrise/get-correct-answer widget))
+                                   (funcall submit widget))))
+    (widget-default-create widget)
+    (local-set-key (kbd "C-m") (memrise/make-interactive submit widget))))
+
+(defun memrise/get-correct-answer (widget)
+  (memrise/session-test-correct (widget-get widget :test)))
+
 (defun memrise/audio-multiple-choice-widget-play (widget)
   (memrise/play-audio (widget-value widget)))
 
 (defun memrise/play-audio (audio)
-  "Plays given `audio' file"
+  "Play given `audio' file"
   (emms-play-file audio))
 
-(defun memrise/make-interactive (fun)
-  "Returns interactive version of the given `fun'"
-  (lambda () (interactive) (funcall fun)))
+(defun memrise/make-interactive (fun &rest args)
+  "Return interactive version of the given `fun'"
+  (lambda () (interactive) (apply fun args)))
 
 (defun memrise/make-widget-callback (fun)
-  "Returns a version of the given `fun' applicable for being a widget callback"
+  "Return a version of the given `fun' applicable for being a widget callback"
   (lambda (widget &rest ignored) (funcall fun widget)))
 
 (defun memrise/format-widget (format test-or-learnable)
@@ -174,7 +209,7 @@
                                       memrise/session-faces))
 
 (defun memrise/widget-choices (test number)
-  "Picks a `number' of translation choices for a quiz."
+  "Pick a `number' of translation choices for a quiz."
   (memrise/construct-choices (memrise/session-test-correct test)
                              (memrise/session-test-choices test)
                              number))
@@ -187,15 +222,15 @@ The result is guaranteed to have `correct' element in it."
     (memrise/shuffle-list (cons correct filtered-incorrect))))
 
 (defun memrise/random-element (list)
-  "Picks a random element from `list'"
+  "Pick a random element from `list'"
   (car (memrise/random-sublist list 1)))
 
 (defun memrise/random-sublist (list number)
-  "Returns `number' of random elements from `list'"
+  "Return `number' of random elements from `list'"
   (-take number (memrise/shuffle-list list)))
 
 (defun memrise/shuffle-list (list)
-  "Shuffles the given `list'"
+  "Shuffle the given `list'"
   (sort (copy-list list) (lambda (a b) (eq (random 2) 1))))
 
 (defun memrise/session-format (test-or-learnable)
