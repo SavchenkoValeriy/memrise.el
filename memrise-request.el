@@ -2,22 +2,27 @@
 
 (require 'cl)
 
-(setq memrise/url "https://www.memrise.com")
-(setq memrise/login-url "https://www.memrise.com/login/")
-(setq memrise/next-home-url "https://www.memrise.com/login/?next=/home/")
-(setq memrise/dashboard-url "http://www.memrise.com/ajax/courses/dashboard/")
-(setq memrise/session-url "https://www.memrise.com/ajax/session/")
+(defconst memrise/url "https://www.memrise.com")
+(defconst memrise/home-url "https://www.memrise.com/home/")
+(defconst memrise/login-url "https://www.memrise.com/login/")
+(defconst memrise/next-home-url "https://www.memrise.com/login/?next=/home/")
+(defconst memrise/dashboard-url "http://www.memrise.com/ajax/courses/dashboard/")
+(defconst memrise/session-url "https://www.memrise.com/ajax/session/")
 
 (defun memrise/cookie ()
-  "Returns memrise session cookie"
+  "Return memrise session cookie"
   (request-cookie-alist "www.memrise.com" "/"))
 
+(defun memrise/init-cookie ()
+  "Request one of memrise.com pages to init cookie"
+  (request memrise/home-url :sync t))
+
 (defun memrise/get-csrf-token ()
-  "Returns CSRF token for memrise.com"
+  "Return CSRF token for memrise.com"
   (assoc-default "csrftoken" (memrise/cookie)))
 
 (defun memrise/get-session-id ()
-  "Returns memrise session ID"
+  "Return memrise session ID"
   (assoc-default "sessionid" (memrise/cookie)))
 
 (defun memrise/to-buffer (buffer)
@@ -32,14 +37,29 @@
 (defun memrise/debug-result ()
   (funcall (memrise/to-buffer "result")))
 
-(setq request-log-level `debug)
+(defun memrise/debug-connection ()
+  (setq request-log-level `debug)
+  (setq request-message-level `debug))
 
-(setq request-backend `curl)
-
-(defun memrise/request-home ()
+(defun memrise/login (username password)
+  "Login to memrise account using `username' and `password'"
+  (interactive
+   (let ((username (read-string "Username: "))
+         (password (read-passwd "Password: ")))
+         (list username password)))
+  (unless (memrise/cookie)
+    (memrise/init-cookie))
   (request
-   "https://www.memrise.com/home/"
-   :parser (memrise/to-buffer "home.html")))
+   memrise/next-home-url
+   :data `(("csrfmiddlewaretoken" . ,(memrise/get-csrf-token))
+           ("password" . ,password)
+           ("username" . ,username))
+   :headers `(("Referer" . ,memrise/login-url))
+   :sync t
+   :success (cl-function (lambda (&key data &allow-other-keys)
+                           (message "Success")))
+   :error (cl-function (lambda (&rest args &key error-thrown &allow-other-keys)
+                         (message "Got error: %S" error-thrown)))))
 
 (defun memrise/request-dashboard (callback)
   (lexical-let ((inner callback))
@@ -47,9 +67,13 @@
      memrise/dashboard-url
      :type "GET"
      :params '(("courses_filter" . "most_recent"))
-     :parser 'json-read
+     :parser #'json-read
      :success (cl-function (lambda (&key data &allow-other-keys)
-                             (funcall inner data))))))
+                             (funcall inner data)))
+     :status-code `((403 . ,(memrise/make-argument-ignoring-lambda
+                             (-partial #'memrise/login-and-retry
+                                       #'memrise/request-dashboard
+                                       inner)))))))
 
 (defun memrise/request-session (course-id type callback)
   (lexical-let ((inner callback))
@@ -62,5 +86,13 @@
      :parser 'json-read
      :success (cl-function (lambda (&key data &allow-other-keys)
                              (funcall inner data))))))
+
+(defun memrise/make-argument-ignoring-lambda (func)
+  (lexical-let ((arg func))
+   (lambda (&rest _) (funcall arg))))
+
+(defun memrise/login-and-retry (func &rest args)
+  (call-interactively 'memrise/login)
+  (apply func args))
 
 (provide 'memrise-request)
