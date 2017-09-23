@@ -125,13 +125,13 @@ Completion doesn't really help a learning process."
    ;; if range is not actually a range, simply compare values
    (t (eq value range))))
 
-(defun memrise/display-next-task ()
+(defun memrise/display-next-task (widget)
   (interactive)
-  (funcall next-task))
+  (funcall next-task widget))
 
-(defun memrise/display-next-task-internal (tasks)
-  (if main-widget
-      (widget-delete main-widget))
+(defun memrise/display-next-task-internal (tasks widget)
+  (if widget
+      (widget-delete widget))
   (memrise/reset-session-bindings)
   (memrise/display-tasks (cdr tasks)))
 

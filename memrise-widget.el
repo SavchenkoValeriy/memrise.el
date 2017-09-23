@@ -56,14 +56,15 @@
 (defun memrise/presentation (learnable)
   (let ((play-presentation (memrise/make-interactive
                             (-partial 'memrise/play-audio
-                                      (memrise/session-learnable-audio learnable)))))
-    (local-set-key (kbd "C-m") 'memrise/display-next-task)
+                                      (memrise/session-learnable-audio learnable))))
+        (widget (widget-create 'item
+                               :format (memrise/format-widget
+                                        memrise/presentation-format
+                                        learnable))))
+    (local-set-key (kbd "C-m") (memrise/make-interactive (-partial 'memrise/display-next-task widget)))
     (local-set-key (kbd "C-r") play-presentation)
     (funcall play-presentation)
-    (widget-create 'item
-                   :format (memrise/format-widget
-                            memrise/presentation-format
-                            learnable))))
+    widget))
 
 (defun memrise/multiple-choice-widget (test number)
   (widget-create 'memrise/choice-widget
@@ -150,7 +151,7 @@
             (widget-get widget :buttons))
       (memrise/widget-run-hooks widget (widget-get widget :on-submit-hook))
       (memrise/reset-session-bindings)
-      (run-at-time "0.5 sec" nil 'memrise/display-next-task))))
+      (run-at-time "0.5 sec" nil 'memrise/display-next-task widget))))
 
 (defun memrise/widget-run-hooks (widget hooks)
   (lexical-let ((arg widget))
