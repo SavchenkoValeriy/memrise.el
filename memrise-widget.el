@@ -173,7 +173,7 @@
 
 (defun memrise/widget-run-hooks (widget hooks)
   (lexical-let ((arg widget))
-      (mapc (lambda (hook) (funcall hook arg)) hooks)))
+    (mapc (lambda (hook) (funcall hook arg)) hooks)))
 
 (defun memrise/typing-widget (test)
   (widget-create 'memrise/text-input-widget
@@ -211,7 +211,9 @@
     (widget-default-create widget)
     (use-local-map widget-field-keymap)
     (local-set-key (kbd "C-m") (memrise/make-interactive submit widget))
-    (memrise/widget-setup-audio widget)))
+    (memrise/widget-setup-audio widget)
+    ;; put cursor into a newly created text input
+    (goto-char (widget-field-start widget))))
 
 (defun memrise/get-correct-answer (widget)
   (memrise/session-test-correct (widget-get widget :test)))
