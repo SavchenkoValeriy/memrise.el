@@ -1,5 +1,6 @@
 ;;; memrise-widget.el --- Collection of memrise widgets  -*- lexical-binding: t; -*-
 
+(require 'memrise-utils)
 (require 'widget)
 (require 'wid-edit)
 (require 'dash)
@@ -68,14 +69,14 @@
   (widget-create 'memrise/choice-widget
                  :test test
                  :prefix-format memrise/multiple-choice-format
-                 :requires-audio nil
+                 :requires-audio 'after
                  :size number))
 
 (defun memrise/reversed-multiple-choice-widget (test number)
   (widget-create 'memrise/choice-widget
                  :test test
                  :prefix-format memrise/reversed-multiple-choice-format
-                 :requires-audio t
+                 :requires-audio 'before
                  :size number))
 
 (defun memrise/audio-multiple-choice-widget (test number)
@@ -94,13 +95,14 @@
   "Multiple choice widget for memrise tests."
   :test nil
   :prefix-format ""
-  :requires-audio t
+  :requires-audio nil ; one of `(before after ,nil)
   :create 'memrise/choice-widget-create
   :assign-keys t
   :on memrise/radio-on
   :off memrise/radio-off
   :size 4
   :submit 'memrise/choice-widget-submit-answer
+  :on-submit-hook nil
   :instant-submit t
   :labels '()
   )
@@ -114,6 +116,7 @@
          (off            (widget-get widget :off))
          (size           (widget-get widget :size))
          (submit         (widget-get widget :submit))
+         (on-submit-hook (widget-get widget :on-submit-hook))
          (instant-submit (widget-get widget :instant-submit))
          (labels         (widget-get widget :labels))
          (audio          (memrise/session-test-prompt-audio
@@ -133,10 +136,7 @@
                                           memrise/radio-keys))
     (when labels
       (memrise/assign-labels (widget-get widget :children) labels))
-    (when requires-audio
-      (let ((play (-partial 'memrise/play-audio audio)))
-       (funcall play)
-       (local-set-key (kbd "C-r") (memrise/make-interactive play))))))
+    (memrise/widget-setup-audio widget)))
 
 (defun memrise/choice-widget-submit-answer (widget)
   (let ((correct (memrise/get-correct-answer widget))
@@ -148,14 +148,20 @@
         (message "Oops, correct answer is \"%s\"" correct))
       (mapc (lambda (x) (widget-apply x :deactivate))
             (widget-get widget :buttons))
+      (memrise/widget-run-hooks widget (widget-get widget :on-submit-hook))
       (memrise/reset-session-bindings)
       (run-at-time "0.5 sec" nil 'memrise/display-next-task))))
+
+(defun memrise/widget-run-hooks (widget hooks)
+  (lexical-let ((arg widget))
+      (mapc (lambda (hook) (funcall hook arg)) hooks)))
 
 (defun memrise/typing-widget (test)
   (widget-create 'memrise/text-input-widget
                  :test test
                  :prefix-format memrise/typing-format
-                 :instant-submit t))
+                 :instant-submit t
+                 :requires-audio 'after))
 
 (define-widget 'memrise/text-input-widget 'editable-field
   "Text input widget for memrise tests."
@@ -166,6 +172,7 @@
   :instant-submit nil
   :assign-keys t
   :input-method 'default
+  :on-submit-hook nil
   :submit 'memrise/choice-widget-submit-answer)
 
 (defun memrise/text-input-widget-create (widget)
@@ -184,10 +191,27 @@
                                                 (memrise/get-correct-answer widget))
                                    (funcall submit widget))))
     (widget-default-create widget)
-    (local-set-key (kbd "C-m") (memrise/make-interactive submit widget))))
+    (use-local-map widget-field-keymap)
+    (local-set-key (kbd "C-m") (memrise/make-interactive submit widget))
+    (memrise/widget-setup-audio widget)))
 
 (defun memrise/get-correct-answer (widget)
   (memrise/session-test-correct (widget-get widget :test)))
+
+(defun memrise/widget-setup-audio (widget)
+  (let* ((test           (widget-get widget :test))
+         (requires-audio (widget-get widget :requires-audio))
+         (on-submit-hook (widget-get widget :on-submit-hook))
+         (audio          (memrise/session-test-prompt-audio
+                          (memrise/session-test-prompt test)))
+         (play (-partial 'memrise/play-audio audio)))
+    (cond ((eq requires-audio 'before)
+           (funcall play)
+           (local-set-key (kbd "C-r") (memrise/make-interactive play)))
+          ((eq requires-audio 'after)
+           (widget-put widget :on-submit-hook
+                       (cons (memrise/make-argument-ignoring-lambda play)
+                             on-submit-hook))))))
 
 (defun memrise/audio-multiple-choice-widget-play (widget)
   (memrise/play-audio (widget-value widget)))
@@ -195,14 +219,6 @@
 (defun memrise/play-audio (audio)
   "Play given `audio' file"
   (emms-play-file audio))
-
-(defun memrise/make-interactive (fun &rest args)
-  "Return interactive version of the given `fun'"
-  (lambda () (interactive) (apply fun args)))
-
-(defun memrise/make-widget-callback (fun)
-  "Return a version of the given `fun' applicable for being a widget callback"
-  (lambda (widget &rest ignored) (funcall fun widget)))
 
 (defun memrise/format-widget (format test-or-learnable)
   (memrise/format-elements-with-faces format
@@ -221,18 +237,6 @@ The result is guaranteed to have `correct' element in it."
   (let* ((filtered-incorrect (memrise/random-sublist incorrect
                                                      (1- number))))
     (memrise/shuffle-list (cons correct filtered-incorrect))))
-
-(defun memrise/random-element (list)
-  "Pick a random element from `list'"
-  (car (memrise/random-sublist list 1)))
-
-(defun memrise/random-sublist (list number)
-  "Return `number' of random elements from `list'"
-  (-take number (memrise/shuffle-list list)))
-
-(defun memrise/shuffle-list (list)
-  "Shuffle the given `list'"
-  (sort (copy-list list) (lambda (a b) (eq (random 2) 1))))
 
 (defun memrise/session-format (test-or-learnable)
   (let ((prompt (make-memrise/session-test-prompt))

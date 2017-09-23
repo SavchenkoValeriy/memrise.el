@@ -1,5 +1,6 @@
 (use-package request :ensure t)
 
+(require 'memrise-utils)
 (require 'cl)
 
 (defconst memrise/url "https://www.memrise.com")
@@ -86,10 +87,6 @@
      :parser 'json-read
      :success (cl-function (lambda (&key data &allow-other-keys)
                              (funcall inner data))))))
-
-(defun memrise/make-argument-ignoring-lambda (func)
-  (lexical-let ((arg func))
-   (lambda (&rest _) (funcall arg))))
 
 (defun memrise/login-and-retry (func &rest args)
   (call-interactively 'memrise/login)
