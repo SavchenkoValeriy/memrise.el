@@ -54,17 +54,29 @@
   :group 'memrise)
 
 (defun memrise/presentation (learnable)
-  (let ((play-presentation (memrise/make-interactive
-                            (-partial 'memrise/play-audio
-                                      (memrise/session-learnable-audio learnable))))
-        (widget (widget-create 'item
-                               :format (memrise/format-widget
-                                        memrise/presentation-format
-                                        learnable))))
+  (widget-create 'memrise/presentation-widget
+                 :learnable learnable))
+
+(define-widget 'memrise/presentation-widget 'item
+  "Widget for presentation of a new word"
+  :learnable nil
+  :prefix-format memrise/presentation-format
+  :requires-audio 'before
+  :get-audio #'memrise/get-audio-from-learnable
+  :create #'memrise/presentation-widget-create
+  )
+
+(defun memrise/presentation-widget-create (widget)
+  (let* ((learnable      (widget-get widget :learnable))
+         (prefix-format  (widget-get widget :prefix-format))
+         (text           (memrise/format-widget prefix-format learnable)))
+    (widget-put widget :format text)
     (local-set-key (kbd "C-m") (memrise/make-interactive (-partial 'memrise/display-next-task widget)))
-    (local-set-key (kbd "C-r") play-presentation)
-    (funcall play-presentation)
-    widget))
+    (widget-default-create widget)
+    (memrise/widget-setup-audio widget)))
+
+(defun memrise/get-audio-from-learnable (widget)
+  (memrise/session-learnable-audio (widget-get widget :learnable)))
 
 (defun memrise/multiple-choice-widget (test number)
   (widget-create 'memrise/choice-widget
@@ -97,7 +109,8 @@
   :test nil
   :prefix-format ""
   :requires-audio nil ; one of `(before after ,nil)
-  :create 'memrise/choice-widget-create
+  :get-audio #'memrise/get-audio-from-test
+  :create #'memrise/choice-widget-create
   :assign-keys t
   :on memrise/radio-on
   :off memrise/radio-off
@@ -153,6 +166,11 @@
       (memrise/reset-session-bindings)
       (run-at-time "0.5 sec" nil 'memrise/display-next-task widget))))
 
+(defun memrise/get-audio-from-test (widget)
+  (let ((test (widget-get widget :test)))
+    (memrise/session-test-prompt-audio
+     (memrise/session-test-prompt test))))
+
 (defun memrise/widget-run-hooks (widget hooks)
   (lexical-let ((arg widget))
       (mapc (lambda (hook) (funcall hook arg)) hooks)))
@@ -162,7 +180,8 @@
                  :test test
                  :prefix-format memrise/typing-format
                  :instant-submit t
-                 :requires-audio 'after))
+                 :requires-audio 'after
+                 :get-audio #'memrise/get-audio-from-test))
 
 (define-widget 'memrise/text-input-widget 'editable-field
   "Text input widget for memrise tests."
@@ -179,18 +198,16 @@
 (defun memrise/text-input-widget-create (widget)
   (lexical-let* ((test           (widget-get widget :test))
                  (prefix-format  (widget-get widget :prefix-format))
-                 (requires-audio (widget-get widget :requires-audio))
                  (assign-keys    (widget-get widget :assign-keys))
                  (submit         (widget-get widget :submit))
                  (instant-submit (widget-get widget :instant-submit))
-                 (audio          (memrise/session-test-prompt-audio
-                                  (memrise/session-test-prompt test)))
                  (text           (memrise/format-widget prefix-format test)))
     (widget-put widget :format (concat text "%v"))
-    (widget-put widget :notify (lambda (widget &rest _)
-                                 (when (string= (widget-value widget)
-                                                (memrise/get-correct-answer widget))
-                                   (funcall submit widget))))
+    (when instant-submit
+      (widget-put widget :notify (lambda (widget &rest _)
+                                   (when (string= (widget-value widget)
+                                                  (memrise/get-correct-answer widget))
+                                     (funcall submit widget)))))
     (widget-default-create widget)
     (use-local-map widget-field-keymap)
     (local-set-key (kbd "C-m") (memrise/make-interactive submit widget))
@@ -200,11 +217,10 @@
   (memrise/session-test-correct (widget-get widget :test)))
 
 (defun memrise/widget-setup-audio (widget)
-  (let* ((test           (widget-get widget :test))
-         (requires-audio (widget-get widget :requires-audio))
+  (let* ((requires-audio (widget-get widget :requires-audio))
          (on-submit-hook (widget-get widget :on-submit-hook))
-         (audio          (memrise/session-test-prompt-audio
-                          (memrise/session-test-prompt test)))
+         (get-audio      (widget-get widget :get-audio))
+         (audio          (funcall get-audio widget))
          (play (-partial 'memrise/play-audio audio)))
     (cond ((eq requires-audio 'before)
            (funcall play)
