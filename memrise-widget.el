@@ -120,7 +120,8 @@
                           (memrise/session-test-prompt test)))
          (text           (memrise/format-widget prefix-format test))
          (choices        (memrise/widget-choices test size)))
-    (widget-put widget :button-args `(:on ,on :off ,off))
+    (widget-put widget :button-args
+                `(:on ,on :off ,off :on-glyph nil :off-glyph nil))
     (widget-put widget :format (concat text "%v"))
     (widget-put widget :args (memrise/session-itemize-choices choices))
     (if instant-submit
