@@ -1,4 +1,9 @@
-;;; memrise-widget.el --- Collection of memrise widgets  -*- lexical-binding: t; -*-
+;;; memrise-widget.el --- Collection of memrise widgets
+;;; -*- lexical-binding: t; -*-
+
+;;; Commentary:
+
+;;; Code:
 
 (require 'memrise-utils)
 (require 'widget)
@@ -6,59 +11,60 @@
 (require 'dash)
 
 (defcustom memrise/radio-keys '(?a ?s ?d ?f ?g ?h ?j ?k ?l ?\;)
-  "Default keys for picking answers during memrise session"
+  "Default keys for picking answers during memrise session."
   :type '(repeat :tag "Keys" (character :tag "char")))
 
 (defvar memrise/presentation-format
   "${text}\n${translation}\n${literal-translation}"
-  "Template for presentation of a new thing")
+  "Template for presentation of a new thing.")
 
 (defvar memrise/multiple-choice-format
   "${prompt}\nSelect the correct ${target} for the ${source} above:\n"
-  "Template for multiple-choice widget")
+  "Template for multiple-choice widget.")
 
 (defvar memrise/reversed-multiple-choice-format
   "${prompt}\nSelect the correct ${source} for the ${target} above:\n"
-  "Template for inverted-multiple-choice widget")
+  "Template for inverted-multiple-choice widget.")
 
 (defvar memrise/audio-multiple-choice-format
   "${prompt}\nChoose the correct ${target} for the ${source}\n"
-  "Template for audio-multiple-choice widget")
+  "Template for audio-multiple-choice widget.")
 
 (defvar memrise/typing-format
   "${prompt}\nType the ${target} for the ${source} above:\n"
-  "Template for typing widget")
+  "Template for typing widget.")
 
 (defcustom memrise/radio-on
   (all-the-icons-faicon "dot-circle-o" :v-adjust 0.0)
-  "Symbol to show for chosen radio button"
+  "Symbol to show for chosen radio button."
   :type '(string)
   :group 'memrise)
 
 (defcustom memrise/radio-off
   (all-the-icons-faicon "circle-o" :v-adjust 0.0)
-  "Symbol to show for not chosen radio button"
+  "Symbol to show for not chosen radio button."
   :type '(string)
   :group 'memrise)
 
 (defcustom memrise/audio-radio-on
   (all-the-icons-faicon "play-circle" :v-adjust 0.0)
-  "Symbol to show for chosen audio radio button"
+  "Symbol to show for chosen audio radio button."
   :type '(string)
   :group 'memrise)
 
 (defcustom memrise/audio-radio-off
   memrise/radio-off
-  "Symbol to show for not chosen audio radio button"
+  "Symbol to show for not chosen audio radio button."
   :type '(string)
   :group 'memrise)
 
 (defun memrise/presentation (learnable)
+  "Present a new `LEARNABLE' entity."
   (widget-create 'memrise/presentation-widget
                  :learnable learnable))
 
 (define-widget 'memrise/presentation-widget 'item
-  "Widget for presentation of a new word"
+  "Widget for presentation of a new word."
   :learnable nil
   :prefix-format memrise/presentation-format
   :requires-audio 'before
@@ -67,6 +73,7 @@
   )
 
 (defun memrise/presentation-widget-create (widget)
+  "Create a memrise/presentation-widget from `WIDGET'."
   (let* ((learnable      (widget-get widget :learnable))
          (prefix-format  (widget-get widget :prefix-format))
          (text           (memrise/format-widget prefix-format learnable)))
@@ -76,9 +83,16 @@
     (memrise/widget-setup-audio widget)))
 
 (defun memrise/get-audio-from-learnable (widget)
+  "Extracts audio file from `WIDGET's learnable."
   (memrise/session-learnable-audio (widget-get widget :learnable)))
 
 (defun memrise/multiple-choice-widget (test number)
+  "Create mutliple choice `TEST'.
+
+\"multiple choice\" stands for choosing one answer in a target
+language, for a given translation in a source language.
+`TEST' is a memrise/session-test of a 'multiple-choice' kind.
+`NUMBER' is a number of choices to show."
   (widget-create 'memrise/choice-widget
                  :test test
                  :prefix-format memrise/multiple-choice-format
@@ -86,6 +100,12 @@
                  :size number))
 
 (defun memrise/reversed-multiple-choice-widget (test number)
+  "Create reversed mutliple choice `TEST'.
+
+\"reverse multiple choice\" stands for choosing one answer in a
+source language, for a given translation in a target language.
+`TEST' is a memrise/session-test of a 'reversed-multiple-choice' kind.
+`NUMBER' is a number of choices to show."
   (widget-create 'memrise/choice-widget
                  :test test
                  :prefix-format memrise/reversed-multiple-choice-format
@@ -93,6 +113,12 @@
                  :size number))
 
 (defun memrise/audio-multiple-choice-widget (test number)
+  "Create audio mutliple choice `TEST'.
+
+\"audio multiple choice\" stands for choosing correct audio
+with a translation of a given word in a source language.
+`TEST' is a memrise/session-test of a 'audio-multiple-choice' kind.
+`NUMBER' is a number of choices to show."
   (widget-create 'memrise/choice-widget
                  :test test
                  :prefix-format memrise/audio-multiple-choice-format
@@ -122,6 +148,7 @@
   )
 
 (defun memrise/choice-widget-create (widget)
+  "Create a memrise/choice-widget from `WIDGET'."
   (let* ((test           (widget-get widget :test))
          (prefix-format  (widget-get widget :prefix-format))
          (requires-audio (widget-get widget :requires-audio))
@@ -137,6 +164,10 @@
                           (memrise/session-test-prompt test)))
          (text           (memrise/format-widget prefix-format test))
          (choices        (memrise/widget-choices test size)))
+    ;; all child buttons should have the same shape using
+    ;; give :on and :off values.
+    ;; as long as we don't use glyphs for buttons, define this
+    ;; explicitly to reduce creation time
     (widget-put widget :button-args
                 `(:on ,on :off ,off :on-glyph nil :off-glyph nil))
     (widget-put widget :format (concat text "%v"))
@@ -149,10 +180,11 @@
       (memrise/assign-buttons-keybindings (widget-get widget :buttons)
                                           memrise/radio-keys))
     (when labels
-      (memrise/assign-labels (widget-get widget :children) labels))
+      (memrise/assign-labels labels (widget-get widget :children)))
     (memrise/widget-setup-audio widget)))
 
 (defun memrise/choice-widget-submit-answer (widget)
+  "Read the value of `WIDGET' and submit it as the answer."
   (let ((correct (memrise/get-correct-answer widget))
         (given (widget-value widget)))
     (if (not given)
@@ -160,22 +192,28 @@
       (if (string= correct given)
           (message "Correct!")
         (message "Oops, correct answer is \"%s\"" correct))
+      ;; to abandon user from picking other choices after
+      ;; submitting her answer, turn off buttons...
       (mapc (lambda (x) (widget-apply x :deactivate))
             (widget-get widget :buttons))
-      (memrise/widget-run-hooks widget (widget-get widget :on-submit-hook))
+      ;; ...and disable key-bindings
       (memrise/reset-session-bindings)
+      (memrise/widget-run-hooks (widget-get widget :on-submit-hook) widget)
       (run-at-time "0.5 sec" nil 'memrise/display-next-task widget))))
 
 (defun memrise/get-audio-from-test (widget)
+  "Extracts audio file from `WIDGET's test."
   (let ((test (widget-get widget :test)))
     (memrise/session-test-prompt-audio
      (memrise/session-test-prompt test))))
 
-(defun memrise/widget-run-hooks (widget hooks)
+(defun memrise/widget-run-hooks (hooks widget)
+  "Run `HOOKS' with `WIDGET' as their argument."
   (lexical-let ((arg widget))
     (mapc (lambda (hook) (funcall hook arg)) hooks)))
 
 (defun memrise/typing-widget (test)
+  "Create typing `TEST'."
   (widget-create 'memrise/text-input-widget
                  :test test
                  :prefix-format memrise/typing-format
@@ -196,6 +234,7 @@
   :submit 'memrise/choice-widget-submit-answer)
 
 (defun memrise/text-input-widget-create (widget)
+  "Create a memrise/text-input-widget from `WIDGET'."
   (lexical-let* ((test           (widget-get widget :test))
                  (prefix-format  (widget-get widget :prefix-format))
                  (assign-keys    (widget-get widget :assign-keys))
@@ -216,9 +255,15 @@
     (goto-char (widget-field-start widget))))
 
 (defun memrise/get-correct-answer (widget)
+  "Return a correct answer for a test represented by `WIDGET'."
   (memrise/session-test-correct (widget-get widget :test)))
 
 (defun memrise/widget-setup-audio (widget)
+  "Define audio behavior for the given memrise `WIDGET'.
+
+Provided `WIDGET' should have the following properties:
+* :requires-audio - one of `(before after nil), when to play audio
+* :get-audio - a function to retrieve audio from `WIDGET' object"
   (let* ((requires-audio (widget-get widget :requires-audio))
          (on-submit-hook (widget-get widget :on-submit-hook))
          (get-audio      (widget-get widget :get-audio))
@@ -233,31 +278,39 @@
                              on-submit-hook))))))
 
 (defun memrise/audio-multiple-choice-widget-play (widget)
+  "Play the audio currently picked in the `WIDGET'."
   (memrise/play-audio (widget-value widget)))
 
 (defun memrise/play-audio (audio)
-  "Play given `audio' file"
+  "Play the given `AUDIO' file."
   (emms-play-file audio))
 
 (defun memrise/format-widget (format test-or-learnable)
+  "Apply `FORMAT' to the given `TEST-OR-LEARNABLE'."
   (memrise/format-elements-with-faces format
                                       (memrise/session-format test-or-learnable)
                                       memrise/session-faces))
 
 (defun memrise/widget-choices (test number)
-  "Pick a `number' of translation choices for a quiz."
+  "For the given `TEST' pick a `NUMBER' of translation choices for a quiz."
   (memrise/construct-choices (memrise/session-test-correct test)
                              (memrise/session-test-choices test)
                              number))
 
 (defun memrise/construct-choices (correct incorrect number)
-  "For given choices construct a randomized list of size `number'.
-The result is guaranteed to have `correct' element in it."
+  "Construct a randomized list of choices.
+
+`CORRECT' - correct choice, guaranteed to be in the result list.
+`INCORRECT' - list of incorrect choices (at least of `NUMBER' - 1 size)
+`NUMBER' - number of choices in the result list."
   (let* ((filtered-incorrect (memrise/random-sublist incorrect
                                                      (1- number))))
     (memrise/shuffle-list (cons correct filtered-incorrect))))
 
 (defun memrise/session-format (test-or-learnable)
+  "Return an alist to use for widget formating.
+
+`TEST-OR-LEARNABLE' is an object to retrieve info to display."
   (let ((prompt (make-memrise/session-test-prompt))
         (learnable (make-memrise/session-learnable)))
     (when (memrise/session-test-p test-or-learnable)
@@ -272,14 +325,19 @@ The result is guaranteed to have `correct' element in it."
       (target . ,(memrise/session-target session)))))
 
 (defun memrise/session-itemize-choices (choices)
+  "Turn `CHOICES' into items."
   (mapcar (lambda (x) `(item :value ,x)) choices))
 
 (defun memrise/assign-buttons-keybindings (buttons bindings)
+  "Change radion `BUTTONS' shapes, assign `BINDINGS', and color them rainbow.
+
+New shape would be of a form '[key] (*button*)'.
+'[key]'s would be colored rainbow colors provided by 'rainbow-delimiters'"
   (mapc (lambda (args) (apply 'memrise/assign-button-keybinding args))
         (-zip buttons bindings (number-sequence 1 (length buttons)))))
 
 (defun memrise/assign-button-keybinding (button keybinding index)
-  "Changes radio `button' shape and `keybinding', colors it with a rainbow color `index'"
+  "Change radio `BUTTON' shape and `KEYBINDING', colors it with a rainbow color `INDEX'."
   (lexical-let ((button button))
     (widget-put button
                 :button-prefix
@@ -291,17 +349,19 @@ The result is guaranteed to have `correct' element in it."
     (local-set-key (char-to-string keybinding)
                    (lambda () (interactive) (widget-apply button :action)))))
 
-(defun memrise/assign-labels (items labels)
-  "Show `labels' instead of `items'' values"
+(defun memrise/assign-labels (labels items)
+  "Show `LABELS' instead of `ITEMS'' values."
   (mapc (lambda (pair) (memrise/assign-label (car pair) (cdr pair)))
-        (-zip items labels)))
+        (-zip labels items)))
 
-(defun memrise/assign-label (item label)
-  "Show `label' instead of `item''s values"
+(defun memrise/assign-label (label item)
+  "Show `LABEL' instead of `ITEM''s value."
   (widget-put item :format (format "%S\n" label))
   (memrise/redraw-widget item))
 
 (defun memrise/redraw-widget (widget)
+  "Redraw `WIDGET' (to update it)."
   (widget-value-set widget (widget-value widget)))
 
 (provide 'memrise-widget)
+;;; memrise-widget.el ends here
