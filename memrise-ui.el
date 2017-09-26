@@ -1,4 +1,9 @@
-;;; memrise-ui.el --- memrise.el UI functions and utilities  -*- lexical-binding: t; -*-
+;;; memrise-ui.el --- memrise.el UI functions and utilities
+;;; -*- lexical-binding: t; -*-
+
+;;; Commentary:
+
+;;; Code:
 
 (require 's)
 
@@ -77,7 +82,7 @@
     (diff-icon . memrise-dashboard-difficult)
     (difficult . memrise-dashboard-difficult)
     (description . memrise-dashboard-description))
-  "Mapping of dashboard elements to faces")
+  "Mapping of dashboard elements to faces.")
 
 (defvar memrise/session-faces
   '((text . memrise-session-thing)
@@ -86,6 +91,7 @@
     (target . memrise-session-keyword)
     (source . memrise-session-keyword)
     (literal-translation . memrise-session-literal-translation))
-  "Mapping of session elements to faces")
+  "Mapping of session elements to faces.")
 
 (provide 'memrise-ui)
+;;; memrise-ui.el ends here
