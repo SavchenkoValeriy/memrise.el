@@ -173,7 +173,7 @@ with a translation of a given word in a source language.
     (widget-put widget :format (concat text "%v"))
     (widget-put widget :args (memrise/session-itemize-choices choices))
     (if instant-submit
-        (widget-put widget :notify (lambda (widget &rest event) (funcall submit widget)))
+        (widget-put widget :notify (memrise/make-widget-callback submit))
       (local-set-key (kbd "C-m") (memrise/make-interactive (-partial submit widget))))
     (widget-default-create widget)
     (when assign-keys
