@@ -8,6 +8,7 @@
     (define-key map "p" 'memrise/dashboard-course-backward)
     (define-key map "l" 'memrise/dashboard-course-learn)
     (define-key map "r" 'memrise/dashboard-course-review)
+    (define-key map "g" 'memrise/dashboard)
     map)
   "Keymap for a memrise dashboard buffer")
 
