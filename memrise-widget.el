@@ -10,7 +10,9 @@
 (require 'wid-edit)
 (require 'dash)
 
-(defcustom memrise/radio-keys '(?a ?s ?d ?f ?g ?h ?j ?k ?l ?\;)
+(defcustom memrise/radio-keys '(?a ?s ?d ?f ?g ?h ?j ?k ?l ?\;
+                                   ?z ?x ?c ?v ?b ?n ?m ?, ?.
+                                   ?q ?w ?e ?r ?t ?y ?u ?i ?o ?p)
   "Default keys for picking answers during memrise session."
   :type '(repeat :tag "Keys" (character :tag "char")))
 
@@ -233,6 +235,21 @@ with a translation of a given word in a source language.
   :on-submit-hook nil
   :submit 'memrise/choice-widget-submit-answer)
 
+(define-minor-mode memrise/input-mode
+  "Memrise mode to press push buttons for input."
+  nil nil
+  (let ((map (make-keymap)))
+    (define-key map (kbd "C-i") 'memrise/input-mode)
+    map))
+
+(define-widget 'memrise/pick-button 'item
+  "Button to pick parts of input"
+  :button-prefix ""
+  :button-suffix ""
+  :parent nil
+  :format "%[%v%]"
+  :action 'memrise/pick-button-insert-value)
+
 (defun memrise/text-input-widget-create (widget)
   "Create a memrise/text-input-widget from `WIDGET'."
   (lexical-let* ((test           (widget-get widget :test))
@@ -240,19 +257,57 @@ with a translation of a given word in a source language.
                  (assign-keys    (widget-get widget :assign-keys))
                  (submit         (widget-get widget :submit))
                  (instant-submit (widget-get widget :instant-submit))
+                 (input-method   (widget-get widget :input-method))
                  (text           (memrise/format-widget prefix-format test)))
     (widget-put widget :format (concat text "%v"))
+    (widget-put widget :keymap nil)
     (when instant-submit
       (widget-put widget :notify (lambda (widget &rest _)
                                    (when (string= (widget-value widget)
                                                   (memrise/get-correct-answer widget))
                                      (funcall submit widget)))))
     (widget-default-create widget)
-    (use-local-map widget-field-keymap)
+    ;;    (use-local-map widget-field-keymap)
     (local-set-key (kbd "C-m") (memrise/make-interactive submit widget))
     (memrise/widget-setup-audio widget)
+    (when (eq input-method 'default)
+      (lexical-let ((hint (widget-create 'item
+                                         "Type C-i to turn input mode on:"))
+                    (buttons (memrise/create-pick-buttons
+                              (memrise/session-test-choices test)
+                              widget)))
+        (widget-put widget :buttons (cons hint buttons))
+        (local-set-key (kbd "C-i") (memrise/make-interactive (-partial
+                                                              #'memrise/switch-input-mode
+                                                              buttons)))))
     ;; put cursor into a newly created text input
     (goto-char (widget-field-start widget))))
+
+(defun memrise/switch-input-mode (buttons)
+  "Activate/deactivate memrise/input-mode and corresponding `BUTTONS'."
+  (if memrise/input-mode
+      (progn
+        (memrise/input-mode -1)
+        (memrise/deactivate-widgets buttons))
+    (memrise/input-mode)
+    (memrise/activate-widgets buttons)))
+
+(defun memrise/deactivate-widgets (widgets)
+  "Deactivate given `WIDGETS'."
+  (memrise/apply-for-all-widgets widgets :deactivate))
+
+(defun memrise/activate-widgets (widgets)
+  "Activate given `WIDGETS'."
+  (memrise/apply-for-all-widgets widgets :activate))
+
+(defun memrise/apply-for-all-widgets (widgets command)
+  "For all `WIDGETS' apply `COMMAND'."
+  (mapc (lambda (x) (widget-apply x command)) widgets))
+
+(defun memrise/pick-button-insert-value (widget &optional _event)
+  (let ((parent (widget-get widget :parent)))
+    (goto-char (widget-field-text-end parent))
+    (insert (widget-value widget))))
 
 (defun memrise/get-correct-answer (widget)
   "Return a correct answer for a test represented by `WIDGET'."
@@ -328,16 +383,34 @@ Provided `WIDGET' should have the following properties:
   "Turn `CHOICES' into items."
   (mapcar (lambda (x) `(item :value ,x)) choices))
 
-(defun memrise/assign-buttons-keybindings (buttons bindings)
-  "Change radion `BUTTONS' shapes, assign `BINDINGS', and color them rainbow.
+(defun memrise/create-pick-buttons (picks widget)
+  "Create buttons representing `PICKS' as children of `WIDGET'."
+  (let ((buttons (mapcar (lambda (x)
+                           (widget-create 'memrise/pick-button
+                                          :button-suffix ""
+                                          :parent widget
+                                          (format "%c" x)))
+                         picks)))
+    (memrise/assign-buttons-keybindings buttons
+                                        memrise/radio-keys
+                                        memrise/input-mode-map)
+    (mapc (lambda (x) (widget-apply x :deactivate)) buttons)
+    buttons))
+
+(defun memrise/assign-buttons-keybindings (buttons bindings &optional keymap)
+  "Change radion `BUTTONS' shapes, assign `BINDINGS' (for the given `KEYMAP').
 
 New shape would be of a form '[key] (*button*)'.
-'[key]'s would be colored rainbow colors provided by 'rainbow-delimiters'"
-  (mapc (lambda (args) (apply 'memrise/assign-button-keybinding args))
+'[key]'s would be colored rainbow colors provided by 'rainbow-delimiters'.
+
+Optional `KEYMAP' parameter is defaulted to current keymap."
+  (unless keymap (setq keymap (current-local-map)))
+  (mapc (lambda (args) (apply 'memrise/assign-button-keybinding keymap args))
         (-zip buttons bindings (number-sequence 1 (length buttons)))))
 
-(defun memrise/assign-button-keybinding (button keybinding index)
-  "Change radio `BUTTON' shape and `KEYBINDING', colors it with a rainbow color `INDEX'."
+(defun memrise/assign-button-keybinding (keymap button keybinding index)
+  "For the given `KEYMAP' change radio `BUTTON' shape and `KEYBINDING',
+colors it with a rainbow color `INDEX'."
   (lexical-let ((button button))
     (widget-put button
                 :button-prefix
@@ -346,8 +419,8 @@ New shape would be of a form '[key] (*button*)'.
                             (rainbow-delimiters-default-pick-face index t nil)))
     ;;to show the new button shape, we need to redraw it
     (memrise/redraw-widget button)
-    (local-set-key (char-to-string keybinding)
-                   (lambda () (interactive) (widget-apply button :action)))))
+    (define-key keymap (char-to-string keybinding)
+      (lambda () (interactive) (widget-apply-action button)))))
 
 (defun memrise/assign-labels (labels items)
   "Show `LABELS' instead of `ITEMS'' values."
