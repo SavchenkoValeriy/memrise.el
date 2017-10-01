@@ -73,6 +73,11 @@
   "Face for literal translations to show during sessions"
   :group 'memrise/faces)
 
+(defface memrise-session-keybinding
+  '((t :weight bold))
+  "Face for keybinding hints."
+  :group 'memrise/faces)
+
 (defvar memrise/dashboard-faces
   '((name . memrise-dashboard-name)
     (learned . memrise-dashboard-learned)

@@ -10,11 +10,17 @@
 (require 'wid-edit)
 (require 'dash)
 
-(defcustom memrise/radio-keys '(?a ?s ?d ?f ?g ?h ?j ?k ?l ?\;
-                                   ?z ?x ?c ?v ?b ?n ?m ?, ?.
-                                   ?q ?w ?e ?r ?t ?y ?u ?i ?o ?p)
+(defcustom memrise/radio-keys '([?a] [?s] [?d] [?f] [?g] [?h] [?j] [?k] [?l] [?\;]
+                                [?z] [?x] [?c] [?v] [?b] [?n] [?m] [?,] [?.] [?/]
+                                [?q] [?w] [?e] [?r] [?t] [?y] [?u] [?i] [?o] [?p])
   "Default keys for picking answers during memrise session."
-  :type '(repeat :tag "Keys" (character :tag "char")))
+  :type '(repeat :tag "Keys" (key-sequence :tag "key"))
+  :group 'memrise)
+
+(defcustom memrise/input-mode-key [?\C-i]
+  "Key to turn on/off memrise button input mode."
+  :type '(key-sequence :tag "key")
+  :group 'memrise)
 
 (defvar memrise/presentation-format
   "${text}\n${translation}\n${literal-translation}"
@@ -271,17 +277,28 @@ with a translation of a given word in a source language.
     (local-set-key (kbd "C-m") (memrise/make-interactive submit widget))
     (memrise/widget-setup-audio widget)
     (when (eq input-method 'default)
-      (lexical-let ((hint (widget-create 'item
-                                         "Type C-i to turn input mode on:"))
-                    (buttons (memrise/create-pick-buttons
-                              (memrise/session-test-choices test)
-                              widget)))
-        (widget-put widget :buttons (cons hint buttons))
-        (local-set-key (kbd "C-i") (memrise/make-interactive (-partial
-                                                              #'memrise/switch-input-mode
-                                                              buttons)))))
+      (memrise/setup-default-input-mode widget))
     ;; put cursor into a newly created text input
     (goto-char (widget-field-start widget))))
+
+(defun memrise/setup-default-input-mode (widget)
+  (lexical-let ((hint (widget-create
+                       'item
+                       :format (format "Type %s to turn input mode on/off:\n"
+                                       (memrise/get-pretty-binding
+                                        memrise/input-mode-key))))
+                (buttons (memrise/create-pick-buttons
+                          (memrise/session-test-choices test)
+                          widget)))
+    (widget-put widget :buttons (cons hint buttons))
+    (local-set-key memrise/input-mode-key
+                   (memrise/make-interactive (-partial
+                                              #'memrise/switch-input-mode
+                                              buttons)))))
+
+(defun memrise/get-pretty-binding (binding)
+  "Return a pretty representation of the `BINDING'."
+  (propertize (key-description binding) 'face 'memrise-session-keybinding))
 
 (defun memrise/switch-input-mode (buttons)
   "Activate/deactivate memrise/input-mode and corresponding `BUTTONS'."
@@ -414,12 +431,13 @@ colors it with a rainbow color `INDEX'."
   (lexical-let ((button button))
     (widget-put button
                 :button-prefix
-                (propertize (format "[%c] " keybinding)
+                (propertize (format "[%s] "
+                                    (key-description keybinding))
                             'face
                             (rainbow-delimiters-default-pick-face index t nil)))
     ;;to show the new button shape, we need to redraw it
     (memrise/redraw-widget button)
-    (define-key keymap (char-to-string keybinding)
+    (define-key keymap keybinding
       (lambda () (interactive) (widget-apply-action button)))))
 
 (defun memrise/assign-labels (labels items)
