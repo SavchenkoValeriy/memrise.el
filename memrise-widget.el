@@ -244,16 +244,14 @@ with a translation of a given word in a source language.
 (define-minor-mode memrise/input-mode
   "Memrise mode to press push buttons for input."
   nil nil
-  (let ((map (make-keymap)))
-    (define-key map (kbd "C-i") 'memrise/input-mode)
-    map))
+  (make-keymap))
 
 (define-widget 'memrise/pick-button 'item
   "Button to pick parts of input"
   :button-prefix ""
   :button-suffix ""
   :parent nil
-  :format "%[%v%]"
+  :format "%[%v%]\n"
   :action 'memrise/pick-button-insert-value)
 
 (defun memrise/text-input-widget-create (widget)
@@ -284,7 +282,7 @@ with a translation of a given word in a source language.
 (defun memrise/setup-default-input-mode (widget)
   (lexical-let ((hint (widget-create
                        'item
-                       :format (format "Type %s to turn input mode on/off:\n"
+                       :format (format "Press %s to turn input mode on/off:\n"
                                        (memrise/get-pretty-binding
                                         memrise/input-mode-key))))
                 (buttons (memrise/create-pick-buttons
@@ -323,7 +321,10 @@ with a translation of a given word in a source language.
 
 (defun memrise/pick-button-insert-value (widget &optional _event)
   (let ((parent (widget-get widget :parent)))
-    (goto-char (widget-field-text-end parent))
+    (unless (<= (widget-field-start parent)
+                (point)
+                (widget-field-text-end parent))
+      (goto-char (widget-field-text-end parent)))
     (insert (widget-value widget))))
 
 (defun memrise/get-correct-answer (widget)
