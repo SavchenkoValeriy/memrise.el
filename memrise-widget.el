@@ -207,7 +207,26 @@ with a translation of a given word in a source language.
       ;; ...and disable key-bindings
       (memrise/reset-session-bindings)
       (memrise/widget-run-hooks (widget-get widget :on-submit-hook) widget)
-      (run-at-time "0.5 sec" nil 'memrise/display-next-task widget))))
+      (run-at-time "0.5 sec"
+                   nil
+                   #'memrise/call-after-all-audio-is-finished
+                   #'memrise/display-next-task
+                   widget))))
+
+(defun memrise/call-after-all-audio-is-finished (func &rest args)
+  "Call `FUNC' with `ARGS' after all audio is over."
+  (lexical-let ((callback (-partial #'apply func args)))
+    (defun memrise/audio-hook ()
+      (remove-hook 'emms-player-finished-hook
+                   'memrise/audio-hook)
+      ;; running callback synchroneously mess up with emms
+      (run-at-time "0.0 sec" nil callback))
+    (if (not emms-player-playing-p)
+        ;; nothing is playing - ready to call
+        (funcall callback)
+      ;; use emms callbacks to call it after player has finished
+      (add-hook 'emms-player-finished-hook
+                'memrise/audio-hook))))
 
 (defun memrise/get-audio-from-test (widget)
   "Extracts audio file from `WIDGET's test."
