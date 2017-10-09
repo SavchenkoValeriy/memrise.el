@@ -49,14 +49,16 @@ Completion doesn't really help a learning process."
       (memrise-session-mode)
       (make-local-variable 'session)
       (setq session (memrise/parse-session json))
-      (memrise/display-session))))
+      (memrise/display-session)
+      (switch-to-buffer (memrise/session-buffer)))))
 
 (defun memrise/display-session ()
   (make-local-variable 'main-widget)
   (make-local-variable 'next-task)
   (widget-insert (memrise/session-course-name session))
   (widget-insert "\n")
-  (widget-insert (memrise/session-title session))
+  (widget-insert (or (memrise/session-title session)
+                     "Review"))
   (widget-insert "\n\n")
   (memrise/display-tasks (memrise/session-tasks session)))
 
@@ -179,6 +181,7 @@ Completion doesn't really help a learning process."
 (defstruct memrise/session-test-prompt
   text  ;; text to show
   audio ;; audio to play (can be nil)
+  video ;; video to show (can be nil)
   )
 
 (defvar memrise/video-quality 'medium
@@ -265,7 +268,8 @@ Completion doesn't really help a learning process."
               :tests tests))))
 
 (defun memrise/parse-session-learnable-audio (json)
-  (memrise/process-audio
+  (memrise/process-media
+   "audio"
    (memrise/parse-column-value json "Audio")))
 
 (defun memrise/parse-session-learnable-literal-translation (json)
@@ -293,8 +297,8 @@ Completion doesn't really help a learning process."
                     (assoc-default 'accepted body))))
     ;; if test is an audio test we should download all audios
     (when (s-contains? "audio" kind)
-      (setq correct (memrise/process-audio correct))
-      (setq choices (memrise/process-audio choices)))
+      (setq correct (memrise/process-media "audio" correct))
+      (setq choices (memrise/process-media "audio" choices)))
     `(,kind . ,(make-memrise/session-test
                 :kind kind
                 :prompt prompt
@@ -305,14 +309,20 @@ Completion doesn't really help a learning process."
 (defun memrise/parse-session-test-prompt (json)
   (let* ((body (assoc-default 'prompt json))
          (text (assoc-default 'text body))
-         (audio (memrise/process-audio
-                 (assoc-default 'audio body))))
-   (make-memrise/session-test-prompt
-    :text text
-    :audio audio)))
+         (audio (memrise/process-media
+                 "audio"
+                 (assoc-default 'audio body)))
+         (video (memrise/process-media
+                 "video"
+                 (assoc-default 'video body))))
+    (make-memrise/session-test-prompt
+     :text text
+     :audio audio
+     :video video)))
 
-(defun memrise/process-audio (vector-or-list)
-  (let ((result (memrise/download-audios
+(defun memrise/process-media (folder vector-or-list)
+  (let ((result (memrise/download-media
+                 folder
                  (if (vectorp vector-or-list)
                      (memrise/vector-to-list vector-or-list)
                    vector-or-list))))
@@ -320,35 +330,26 @@ Completion doesn't really help a learning process."
         (car result)
       result)))
 
-(defun memrise/download-audios (urls)
-  (mapcar 'memrise/download-audio urls))
+(defun memrise/download-media (folder urls)
+  (mapcar (-partial #'memrise/download folder) urls))
 
-(defun memrise/download-audio (url)
-  (let* ((audio-dir (file-name-as-directory "audio"))
+(defun memrise/download (folder url)
+  (let* ((file-dir (file-name-as-directory folder))
          (file (concat
-                audio-dir
+                file-dir
                 (memrise/hash url)
                 "."
-                (memrise/get-audio-extension url))))
-    (memrise/download url file)))
+                (memrise/get-file-extension url))))
+    (memrise/download-internal url file)))
 
 (defun memrise/hash (url)
   (md5 url))
 
-(defun memrise/get-audio-extension (url)
+(defun memrise/get-file-extension (url)
   (file-name-extension url))
 
-(defun memrise/download-video (json)
-  (let* ((url (assoc-default memrise/video-quality json))
-         (video-dir (file-name-as-directory "video"))
-         (file (concat video-dir (memrise/get-video-file-name url))))
-    (memrise/download url file)))
-
-(defun memrise/get-video-file-name (url)
-  (file-name-nondirectory url))
-
-(defun memrise/download (what where)
-  "Download file from location `what' and puts it by location `where'"
+(defun memrise/download-internal (what where)
+  "Download file from location `WHAT' and puts it by location `WHERE'"
   (let* ((where (concat
                  (file-name-as-directory
                   memrise/material-storage-directory)
