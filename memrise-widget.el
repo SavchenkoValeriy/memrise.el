@@ -42,6 +42,10 @@
   "${prompt}\nType the ${target} for the ${source} above:\n"
   "Template for typing widget.")
 
+(defvar memrise/tapping-format
+  "${prompt}\nArrange the ${target} to translate the ${source} above:\n"
+  "Template for tapping widget.")
+
 (defcustom memrise/radio-on
   (all-the-icons-faicon "dot-circle-o" :v-adjust 0.0)
   "Symbol to show for chosen radio button."
@@ -306,7 +310,9 @@ with a translation of a given word in a source language.
                                         memrise/input-mode-key))))
                 (buttons (memrise/create-pick-buttons
                           (memrise/session-test-choices test)
-                          widget)))
+                          widget
+                          memrise/input-mode-map
+                          t)))
     (widget-put widget :buttons (cons hint buttons))
     (local-set-key memrise/input-mode-key
                    (memrise/make-interactive (-partial
@@ -325,6 +331,56 @@ with a translation of a given word in a source language.
         (memrise/deactivate-widgets buttons))
     (memrise/input-mode)
     (memrise/activate-widgets buttons)))
+
+(defun memrise/tapping-widget (test)
+  "Create typing `TEST'."
+  (widget-create 'memrise/tapping-widget
+                 :test test
+                 :prefix-format memrise/tapping-format
+                 :requires-audio 'after
+                 :get-audio #'memrise/get-audio-from-test))
+
+(define-widget 'memrise/tapping-widget 'editable-field
+  "Widget for tapping choices for memrise tests."
+  :test nil
+  :prefix-format ""
+  :create 'memrise/tapping-widget-create
+  :requires-audio nil
+  :instant-submit t
+  :assign-keys t
+  :on-submit-hook nil
+  :min 4
+  :max 8
+  :submit 'memrise/choice-widget-submit-answer)
+
+(defun memrise/tapping-widget-create (widget)
+  "Create a memrise/tapping-widget from `WIDGET'."
+  (lexical-let* ((test           (widget-get widget :test))
+                 (prefix-format  (widget-get widget :prefix-format))
+                 (assign-keys    (widget-get widget :assign-keys))
+                 (submit         (widget-get widget :submit))
+                 (instant-submit (widget-get widget :instant-submit))
+                 (text           (memrise/format-widget prefix-format test)))
+    (suppress-keymap (current-local-map) t)
+    (widget-put widget :format (concat text "%v"))
+    (widget-put widget :keymap nil)
+    (widget-default-create widget)
+    (local-set-key (kbd "C-m") (memrise/make-interactive submit widget))
+    (memrise/widget-setup-audio widget)
+    (memrise/setup-tapping-choices widget)
+    ;; put cursor into a newly created text input
+    (goto-char (widget-field-start widget))))
+
+(defun memrise/setup-tapping-choices (widget)
+  (lexical-let* ((min     (widget-get widget :min))
+                 (max     (widget-get widget :max))
+                 (choices (memrise/construct-choices
+                           (memrise/session-test-correct test)
+                           (memrise/session-test-choices test)
+                           max min))
+                 (buttons (memrise/create-pick-buttons
+                           choices widget)))
+    (widget-put widget :buttons buttons)))
 
 (defun memrise/deactivate-widgets (widgets)
   "Deactivate given `WIDGETS'."
@@ -389,15 +445,24 @@ Provided `WIDGET' should have the following properties:
                              (memrise/session-test-choices test)
                              number))
 
-(defun memrise/construct-choices (correct incorrect number)
+(defun memrise/construct-choices
+    (correct incorrect number &optional minimal)
   "Construct a randomized list of choices.
 
-`CORRECT' - correct choice, guaranteed to be in the result list.
+`CORRECT' - correct choice(s), guaranteed to be in the result list.
 `INCORRECT' - list of incorrect choices (at least of `NUMBER' - 1 size)
-`NUMBER' - number of choices in the result list."
-  (let* ((filtered-incorrect (memrise/random-sublist incorrect
-                                                     (1- number))))
-    (memrise/shuffle-list (cons correct filtered-incorrect))))
+`NUMBER' - number of choices in the result list.
+`MINIMAL' - minimal number of incorrect choices."
+  (unless minimal
+    setq minimal 0)
+  (let* ((concat (if (sequencep correct) 'append 'cons))
+         (correct-size (if (sequencep correct)
+                           (length correct)
+                         1))
+         (incorrect-size (max (- number correct-size) minimal))
+         (filtered-incorrect
+          (memrise/random-sublist incorrect incorrect-size)))
+    (memrise/shuffle-list (funcall concat correct filtered-incorrect))))
 
 (defun memrise/session-format (test-or-learnable)
   "Return an alist to use for widget formating.
@@ -420,18 +485,19 @@ Provided `WIDGET' should have the following properties:
   "Turn `CHOICES' into items."
   (mapcar (lambda (x) `(item :value ,x)) choices))
 
-(defun memrise/create-pick-buttons (picks widget)
+(defun memrise/create-pick-buttons (picks widget &optional map deactivate)
   "Create buttons representing `PICKS' as children of `WIDGET'."
   (let ((buttons (mapcar (lambda (x)
                            (widget-create 'memrise/pick-button
                                           :button-suffix ""
                                           :parent widget
-                                          (format "%c" x)))
+                                          (format "%s" x)))
                          picks)))
     (memrise/assign-buttons-keybindings buttons
                                         memrise/radio-keys
-                                        memrise/input-mode-map)
-    (mapc (lambda (x) (widget-apply x :deactivate)) buttons)
+                                        map)
+    (when deactivate
+      (memrise/deactivate-widgets buttons))
     buttons))
 
 (defun memrise/assign-buttons-keybindings (buttons bindings &optional keymap)

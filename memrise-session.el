@@ -106,7 +106,8 @@ Completion doesn't really help a learning process."
     ("reversed_multiple_choice" (memrise/reversed-multiple-choice-widget test number))
     ("audio_multiple_choice"    (memrise/audio-multiple-choice-widget
                                  test memrise/minimal-number-of-choices))
-    ("typing"                   (memrise/typing-widget test))))
+    ("typing"                   (memrise/typing-widget test))
+    ("tapping"                  (memrise/tapping-widget test))))
 
 (defun memrise/icase (value &rest args)
   (let* ((head (car args))
