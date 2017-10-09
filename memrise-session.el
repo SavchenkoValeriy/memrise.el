@@ -327,16 +327,13 @@ Completion doesn't really help a learning process."
   (let* ((audio-dir (file-name-as-directory "audio"))
          (file (concat
                 audio-dir
-                (memrise/get-audio-id url)
+                (memrise/hash url)
                 "."
                 (memrise/get-audio-extension url))))
     (memrise/download url file)))
 
-(defun memrise/get-audio-id (url)
-  ;; example: url == .../11967/1.mp3
-  (file-name-nondirectory        ;; 11967
-   (directory-file-name          ;; .../11967
-    (file-name-directory url)))) ;; .../11967/
+(defun memrise/hash (url)
+  (md5 url))
 
 (defun memrise/get-audio-extension (url)
   (file-name-extension url))
