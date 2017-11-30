@@ -84,7 +84,7 @@
      :params `(("course_id" . ,course-id)
                ("session_slug" . ,type)
                ("_" . ,(memrise/get-session-id)))
-     :parser 'json-read
+     :parser #'json-read
      :success (cl-function (lambda (&key data &allow-other-keys)
                              (funcall inner data))))))
 

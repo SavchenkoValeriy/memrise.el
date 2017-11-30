@@ -367,9 +367,60 @@ with a translation of a given word in a source language.
     (widget-default-create widget)
     (local-set-key (kbd "C-m") (memrise/make-interactive submit widget))
     (memrise/widget-setup-audio widget)
+    (memrise/setup-tapping-bindings widget)
     (memrise/setup-tapping-choices widget)
     ;; put cursor into a newly created text input
     (goto-char (widget-field-start widget))))
+
+(defun memrise/setup-tapping-bindings (widget)
+  (local-set-key (kbd "C-d") (memrise/make-interactive
+                              #'memrise/delete-next-tap-word))
+  (local-set-key [backspace] (memrise/make-interactive
+                              #'memrise/delete-previous-tap-word)))
+
+(defun memrise/delete-next-tap-word ()
+  (let ((tap-word (memrise/get-this-or-next-tap-word)))
+    (memrise/delete-tap-word tap-word)))
+
+(defun memrise/delete-previous-tap-word ()
+  (let ((tap-word (memrise/get-this-or-previous-tap-word)))
+    (memrise/delete-tap-word tap-word)))
+
+(defun memrise/delete-tap-word (tap-word)
+  (when tap-word
+    (delete-region (overlay-start tap-word)
+                   (overlay-end tap-word))
+    (delete-overlay tap-word)))
+
+(defun memrise/get-this-or-next-tap-word ()
+  (or (memrise/get-this-tap-word)
+      (memrise/get-next-tap-word)))
+
+(defun memrise/get-this-or-previous-tap-word ()
+  (or (memrise/get-this-tap-word)
+      (memrise/get-previous-tap-word)))
+
+(defun memrise/get-this-tap-word ()
+  (memrise/find-tap-word (point)))
+
+(defun memrise/get-next-tap-word ()
+  (let ((next-overlay-pos (next-overlay-change (point))))
+    (memrise/find-tap-word next-overlay-pos)))
+
+(defun memrise/get-previous-tap-word ()
+  (let ((previous-overlay-pos (previous-overlay-change (point))))
+    (memrise/find-tap-word previous-overlay-pos)))
+
+(defun memrise/find-tap-word (where)
+  (memrise/find-tap-word-internal (overlays-at where)))
+
+(defun memrise/find-tap-word-internal (overlays)
+  (let ((overlay (car overlays)))
+    (if (not overlays)
+        nil
+      (if (overlay-get overlay 'tap)
+          overlay
+        (memrise/find-tap-word-internal (cdr overlays))))))
 
 (defun memrise/setup-tapping-choices (widget)
   (lexical-let* ((min     (widget-get widget :min))
@@ -379,7 +430,8 @@ with a translation of a given word in a source language.
                            (memrise/session-test-choices test)
                            max min))
                  (buttons (memrise/create-pick-buttons
-                           choices widget)))
+                           choices widget nil nil
+                           '(:action memrise/pick-button-insert-complex-value))))
     (widget-put widget :buttons buttons)))
 
 (defun memrise/deactivate-widgets (widgets)
@@ -396,11 +448,34 @@ with a translation of a given word in a source language.
 
 (defun memrise/pick-button-insert-value (widget &optional _event)
   (let ((parent (widget-get widget :parent)))
-    (unless (<= (widget-field-start parent)
-                (point)
-                (widget-field-text-end parent))
-      (goto-char (widget-field-text-end parent)))
+    (memrise/goto-field parent)
     (insert (widget-value widget))))
+
+(defun memrise/pick-button-insert-complex-value (widget &optional _event)
+  (let* ((parent (widget-get widget :parent))
+         (start (or (memrise/goto-field parent)
+                    (memrise/goto-next-tap-word)
+                    (point)))
+         end
+         overlay)
+    (memrise/pick-button-insert-value widget)
+    (insert " ")
+    (setq end (point))
+    (setq overlay (make-overlay start end))
+    (overlay-put overlay 'tap t)))
+
+(defun memrise/goto-next-tap-word ()
+  (let ((tap-word (memrise/get-this-or-next-tap-word)))
+    (if tap-word
+        (goto-char (overlay-end tap-word))
+      nil)))
+
+(defun memrise/goto-field (field-widget)
+  "Goto editable field of `FIELD_WIDGET' if not there."
+  (unless (<= (widget-field-start field-widget)
+              (point)
+              (widget-field-text-end field-widget))
+    (goto-char (widget-field-text-end field-widget))))
 
 (defun memrise/get-correct-answer (widget)
   "Return a correct answer for a test represented by `WIDGET'."
@@ -485,14 +560,16 @@ Provided `WIDGET' should have the following properties:
   "Turn `CHOICES' into items."
   (mapcar (lambda (x) `(item :value ,x)) choices))
 
-(defun memrise/create-pick-buttons (picks widget &optional map deactivate)
+(defun memrise/create-pick-buttons (picks widget &optional map deactivate extra-args)
   "Create buttons representing `PICKS' as children of `WIDGET'."
-  (let ((buttons (mapcar (lambda (x)
-                           (widget-create 'memrise/pick-button
-                                          :button-suffix ""
-                                          :parent widget
-                                          (format "%s" x)))
-                         picks)))
+  (let* ((buttons (mapcar (lambda (x)
+                            (apply 'widget-create
+                                   'memrise/pick-button
+                                   :button-suffix ""
+                                   :parent widget
+                                   (-snoc extra-args
+                                          (format "%s" x))))
+                          picks)))
     (memrise/assign-buttons-keybindings buttons
                                         memrise/radio-keys
                                         map)
