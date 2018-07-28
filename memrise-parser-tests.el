@@ -3,6 +3,7 @@
 (require 'memrise-session-objects)
 (require 'memrise-learnable-parser)
 (require 'memrise-task-parser)
+(require 'memrise-test-parser)
 
 (ert-deftest memrise-parse-learnable-test ()
   (let* ((json (memrise-test-load-json "assets/learnable.json"))
@@ -34,6 +35,31 @@
                      "presentation"))
     (should (not (memrise/session-task-learn-level result)))))
 
+(ert-deftest memrise-parse-session-test-typing ()
+  (cl-letf* ((json (memrise-test-load-json "assets/test_typing.json"))
+             (prompt "")
+             ((symbol-function 'memrise/parse-session-test-prompt)
+              (lambda (json) (progn
+                          (setq prompt json)
+                          "called")))
+             (result (cdr (memrise/parse-session-test (car json)))))
+    (should (string= (memrise/session-test-kind result)
+                     "typing"))
+    (should (string= (memrise/session-test-correct result)
+                     "der Notfall"))
+    (should (equal (memrise/session-test-accepted result)
+                   '("der Notfall" "der notfall")))
+    (should (equal (memrise/session-test-choices result)
+                   '("ä" "é" "ö" "ü" "ß")))
+    (should (string= prompt "fake prompt"))
+    (should (string= (memrise/session-test-prompt result)
+                     "called"))))
+
+(ert-deftest memrise-parse-session-test-prompt ()
+  (cl-letf* ((json (memrise-test-load-json "assets/test_prompt.json"))
+             (result (memrise/parse-session-test-prompt json)))
+    (should (string= (memrise/session-test-prompt-text result)
+                     "the emergency"))))
 
 (defun memrise-test-load-json (json-path)
   "Return filePath's file content."

@@ -5,12 +5,14 @@
 (defun memrise/parse-session-test (json)
   (let* ((kind (symbol-name (car json))) ;; kind would be a string
          (body (cdr json))
-         (prompt (memrise/parse-session-test-prompt body))
-         (correct (assoc-default 'correct body))
+         (prompt (memrise/parse-session-test-prompt
+                  (assoc-default 'prompt body)))
+         (correct-json (assoc-default 'answer body))
+         (correct (assoc-default 'value correct-json))
          (choices (memrise/vector-to-list
                    (assoc-default 'choices body)))
          (accepted (memrise/vector-to-list
-                    (assoc-default 'accepted body))))
+                    (assoc-default 'correct body))))
     ;; if test is an audio test we should download all audios
     (when (s-contains? "audio" kind)
       (setq correct (memrise/process-media "audio" correct))
@@ -23,13 +25,13 @@
                 :accepted accepted))))
 
 (defun memrise/parse-session-test-prompt (json)
-  (let* ((body (assoc-default 'prompt json))
-         (text (assoc-default 'text body))
+  (let* ((text-json (assoc-default 'text json))
+         (text (assoc-default 'value text-json))
          (audio (memrise/parse-session-audio
-                 (assoc-default 'audio body)))
+                 (assoc-default 'audio json)))
          (video (memrise/process-media
                  "video"
-                 (assoc-default 'video body))))
+                 (assoc-default 'video json))))
     (make-memrise/session-test-prompt
      :text text
      :audio audio
