@@ -1,0 +1,27 @@
+{
+  "learnable_id": "65550801240322",
+  "thing_id": 1000225849,
+  "item": {
+    "kind": "text",
+    "value": "der Notfall",
+    "label": "German",
+    "always_show": false,
+    "alternatives": [],
+    "style": []
+  },
+  "definition": {
+    "kind": "text",
+    "value": "the emergency",
+    "label": "English (US)",
+    "always_show": false,
+    "alternatives": [],
+    "style": []
+  },
+  "confused_answers": [
+    {
+      "label": "Literal translation",
+      "value": "the emergency-case"
+    }
+  ],
+  "difficulty": "easy"
+}

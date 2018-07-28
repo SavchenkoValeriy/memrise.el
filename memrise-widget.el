@@ -1,5 +1,4 @@
-;;; memrise-widget.el --- Collection of memrise widgets
-;;; -*- lexical-binding: t; -*-
+;;; memrise-widget.el --- Collection of memrise widgets -*- lexical-binding: t; -*-
 
 ;;; Commentary:
 
@@ -80,7 +79,7 @@
   :learnable nil
   :prefix-format memrise/presentation-format
   :requires-audio 'before
-  :get-audio #'memrise/get-audio-from-learnable
+  :get-audio #'memrise/get-audio-from-test
   :create #'memrise/presentation-widget-create
   )
 
