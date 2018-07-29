@@ -1,0 +1,14 @@
+{
+  "label": "Audio",
+  "kind": "audio",
+  "value": [
+    {
+      "normal": "normal.mp3",
+      "slow": "slow.mp3"
+    }
+  ],
+  "alternatives": [],
+  "style": [],
+  "direction": "target",
+  "markdown": false
+}

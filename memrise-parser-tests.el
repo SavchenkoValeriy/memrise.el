@@ -16,7 +16,7 @@
                      "the emergency"))
     (should (not (memrise/session-learnable-audio result)))))
 
-(ert-deftest memrise-parse-session-task-sentinel ()
+(ert-deftest memrise-parse-session-task-sentinel-test ()
   (let* ((json (memrise-test-load-json "assets/task_sentinel.json"))
          (result (memrise/parse-session-task json)))
     (should (= (memrise/session-task-learnable-id result)
@@ -39,9 +39,7 @@
   (cl-letf* ((json (memrise-test-load-json "assets/test_typing.json"))
              (prompt "")
              ((symbol-function 'memrise/parse-session-test-prompt)
-              (lambda (json) (progn
-                          (setq prompt json)
-                          "called")))
+              (memrise-test-mock prompt))
              (result (cdr (memrise/parse-session-test (car json)))))
     (should (string= (memrise/session-test-kind result)
                      "typing"))
@@ -55,11 +53,31 @@
     (should (string= (memrise/session-test-prompt result)
                      "called"))))
 
-(ert-deftest memrise-parse-session-test-prompt ()
+(ert-deftest memrise-parse-session-test-prompt-test ()
   (cl-letf* ((json (memrise-test-load-json "assets/test_prompt.json"))
+             (audio "")
+             ((symbol-function 'memrise/parse-session-audio)
+              (memrise-test-mock audio))
              (result (memrise/parse-session-test-prompt json)))
     (should (string= (memrise/session-test-prompt-text result)
-                     "the emergency"))))
+                     "the emergency"))
+    (should (string= (memrise/session-test-prompt-audio result)
+                     "called"))
+    (should (string= audio "fake audio"))))
+
+(ert-deftest memrise-parse-prompt-audio-test ()
+  (cl-letf* ((json (memrise-test-load-json "assets/test_prompt_audio.json"))
+             (media-args "")
+             ((symbol-function 'memrise/process-media)
+              (memrise-test-mock media-args))
+             (result (memrise/parse-session-audio json)))
+    (should (equal media-args '("audio" ("normal.mp3"))))
+    (should (string= result "called"))))
+
+(defmacro memrise-test-mock (var)
+  `(lambda (&rest x) (progn
+                  (setq ,var x)
+                  "called")))
 
 (defun memrise-test-load-json (json-path)
   "Return filePath's file content."

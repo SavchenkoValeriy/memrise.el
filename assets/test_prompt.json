@@ -8,20 +8,7 @@
     "direction": "source",
     "markdown": false
   },
-  "audio": {
-    "label": "Audio",
-    "kind": "audio",
-    "value": [
-      {
-        "normal": "https://static.memrise.com/uploads/babylon/8/audios-v3/12475/1.mp3",
-        "slow": "https://static.memrise.com/uploads/stretched_audio/82d77f77-4943-49ae-b42e-80f7731f29eb-stretched.mp3"
-      }
-    ],
-    "alternatives": [],
-    "style": [],
-    "direction": "target",
-    "markdown": false
-  },
+  "audio": "fake audio",
   "video": null,
   "image": null
 }
