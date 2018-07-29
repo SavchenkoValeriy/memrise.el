@@ -1,0 +1,66 @@
+{
+  "audio_multiple_choice": {
+    "template": "audio_multiple_choice",
+    "prompt": "fake prompt",
+    "answer": {
+      "label": "Audio",
+      "kind": "audio",
+      "value": [
+        {
+          "normal": "12475.mp3",
+          "slow": "stretched.mp3"
+        }
+      ],
+      "alternatives": [],
+      "style": [],
+      "direction": "target",
+      "markdown": false
+    },
+    "correct": [
+      "12475.mp3"
+    ],
+    "choices": [
+      "13056.mp3",
+      "13699.mp3",
+      "13833.mp3",
+      "13195.mp3",
+      "12814.mp3",
+      "14296.mp3",
+      "13845.mp3",
+      "12822.mp3",
+      "12185.mp3",
+      "12698.mp3",
+      "12192.mp3",
+      "13606.mp3"
+    ],
+    "audio": {
+      "label": "Audio",
+      "kind": "audio",
+      "value": [
+        {
+          "normal": "12475.mp3",
+          "slow": "stretched.mp3"
+        }
+      ],
+      "alternatives": [],
+      "style": [],
+      "direction": "target",
+      "markdown": false
+    },
+    "attributes": [],
+    "post_answer_info": {
+      "label": "Literal translation",
+      "kind": "text",
+      "value": "the emergency-case",
+      "alternatives": [],
+      "style": [],
+      "direction": "target",
+      "markdown": false
+    },
+    "placeholder": null,
+    "feedback_screen": null,
+    "is_strict": false,
+    "translation_prompt": null,
+    "gap_prompt": null
+  }
+}

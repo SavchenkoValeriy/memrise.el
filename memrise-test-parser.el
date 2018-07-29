@@ -15,8 +15,9 @@
                     (assoc-default 'correct body))))
     ;; if test is an audio test we should download all audios
     (when (s-contains? "audio" kind)
-      (setq correct (memrise/process-media "audio" correct))
-      (setq choices (memrise/process-media "audio" choices)))
+      (setq correct (memrise/download-normal-pace-audio correct))
+      (setq choices (memrise/process-media "audio" choices))
+      (setq accepted (memrise/process-media "audio" accepted)))
     `(,kind . ,(make-memrise/session-test
                 :kind kind
                 :prompt prompt
@@ -38,8 +39,11 @@
      :video video)))
 
 (defun memrise/parse-session-audio (json)
-  (let* ((value (assoc-default 'value json))
-         (audios (elt value 0))
+  (let* ((value (assoc-default 'value json)))
+    (memrise/download-normal-pace-audio value)))
+
+(defun memrise/download-normal-pace-audio (json)
+  (let* ((audios (elt json 0))
          (audio (assoc-default 'normal audios)))
     (when audio
       (memrise/process-media "audio" (list audio)))))

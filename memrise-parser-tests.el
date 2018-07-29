@@ -37,9 +37,8 @@
 
 (ert-deftest memrise-parse-session-test-typing ()
   (cl-letf* ((json (memrise-test-load-json "assets/test_typing.json"))
-             (prompt "")
              ((symbol-function 'memrise/parse-session-test-prompt)
-              (memrise-test-mock prompt))
+              (memrise-test-mock))
              (result (cdr (memrise/parse-session-test (car json)))))
     (should (string= (memrise/session-test-kind result)
                      "typing"))
@@ -49,35 +48,61 @@
                    '("der Notfall" "der notfall")))
     (should (equal (memrise/session-test-choices result)
                    '("ä" "é" "ö" "ü" "ß")))
-    (should (string= prompt "fake prompt"))
     (should (string= (memrise/session-test-prompt result)
-                     "called"))))
+                     (memrise-mocked "fake prompt")))))
 
 (ert-deftest memrise-parse-session-test-prompt-test ()
   (cl-letf* ((json (memrise-test-load-json "assets/test_prompt.json"))
-             (audio "")
              ((symbol-function 'memrise/parse-session-audio)
-              (memrise-test-mock audio))
+              (memrise-test-mock))
              (result (memrise/parse-session-test-prompt json)))
     (should (string= (memrise/session-test-prompt-text result)
                      "the emergency"))
     (should (string= (memrise/session-test-prompt-audio result)
-                     "called"))
-    (should (string= audio "fake audio"))))
+                     (memrise-mocked "fake audio")))))
 
 (ert-deftest memrise-parse-prompt-audio-test ()
   (cl-letf* ((json (memrise-test-load-json "assets/test_prompt_audio.json"))
-             (media-args "")
              ((symbol-function 'memrise/process-media)
-              (memrise-test-mock media-args))
+              (memrise-test-mock))
              (result (memrise/parse-session-audio json)))
-    (should (equal media-args '("audio" ("normal.mp3"))))
-    (should (string= result "called"))))
+    (should (string= result (memrise-mocked "audio" '("normal.mp3"))))))
 
-(defmacro memrise-test-mock (var)
-  `(lambda (&rest x) (progn
-                  (setq ,var x)
-                  "called")))
+(ert-deftest memrise-audio-multiple-choice-test ()
+  (cl-letf* ((json (memrise-test-load-json
+                    "assets/audio_multiple_choice.json"))
+             ((symbol-function 'memrise/parse-session-test-prompt)
+              (memrise-test-mock))
+             ((symbol-function 'memrise/process-media)
+              (memrise-test-mock))
+             (result (cdr (memrise/parse-session-test (car json)))))
+    (should (string= (memrise/session-test-kind result)
+                     "audio_multiple_choice"))
+    (should (string= (memrise/session-test-correct result)
+                     (memrise-mocked "audio" '("12475.mp3"))))
+    (should (equal (memrise/session-test-accepted result)
+                   (memrise-mocked "audio" '("12475.mp3"))))
+    (should (string= (memrise/session-test-prompt result)
+                     (memrise-mocked "fake prompt")))
+    (should (equal (memrise/session-test-choices result)
+                   (memrise-mocked "audio" '("13056.mp3"
+                                             "13699.mp3"
+                                             "13833.mp3"
+                                             "13195.mp3"
+                                             "12814.mp3"
+                                             "14296.mp3"
+                                             "13845.mp3"
+                                             "12822.mp3"
+                                             "12185.mp3"
+                                             "12698.mp3"
+                                             "12192.mp3"
+                                             "13606.mp3"))))))
+
+(defun memrise-test-mock ()
+  (lambda (&rest x) (apply #'memrise-mocked x)))
+
+(defun memrise-mocked (&rest args)
+  (format "mock-%S" args))
 
 (defun memrise-test-load-json (json-path)
   "Return filePath's file content."
