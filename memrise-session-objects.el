@@ -16,13 +16,16 @@
   learn-level  ;; learn level (nil or 1-6)
   )
 
-(defstruct memrise/session-learnable
-  id                  ;; unique ID to identify the thing
-  text                ;; text representation
-  translation         ;; translation of a text representation
-  audio               ;; audio representation
-  literal-translation ;; can be nil
-  )
+(jeison-defclass memrise-session-learnable nil
+  ((id :path ((string-to-number learnable_id))
+       :documentation "a unique ID to identify the thing")
+   (text :path (item value) :documentation "text representation")
+   (translation :path (definition value)
+                :documentation "translation of a text representation")
+   (audio :path ((memrise/parse-session-learnable-audio nil))
+          :documentation "audio representation")
+   (literal-translation :path ((memrise/parse-session-learnable-literal-translation nil))
+                        :documentation "can be nil")))
 
 (defstruct memrise/session-test
   kind     ;; one of '("multiple_choice"

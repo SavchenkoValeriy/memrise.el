@@ -3,20 +3,8 @@
 (require 'memrise-media)
 
 (defun memrise/parse-session-learnable (json)
-  (let* ((id (string-to-number
-              (assoc-default 'learnable_id json)))
-         (text (assoc-default 'value
-                              (assoc-default 'item json)))
-         (translation (assoc-default 'value
-                                     (assoc-default 'definition json)))
-         (audio (memrise/parse-session-learnable-audio json))
-         (literal-translation (memrise/parse-session-learnable-literal-translation json)))
-    `(,id . ,(make-memrise/session-learnable
-              :id id
-              :text text
-              :translation translation
-              :audio audio
-              :literal-translation literal-translation))))
+  (let* ((result (jeison-read memrise-session-learnable json)))
+    (cons (oref result id) result)))
 
 (defun memrise/parse-session-learnable-audio (json)
   (memrise/process-media
