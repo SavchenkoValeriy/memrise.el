@@ -1,6 +1,7 @@
 (require 'memrise-request)
 (require 'memrise-session)
 (require 'memrise-ui)
+(require 'jeison)
 
 (defvar memrise-mode-map
   (let ((map (make-keymap)))
@@ -34,17 +35,17 @@
            (switch-to-buffer buffer)))))))
 
 ;; Course structs
-(defstruct memrise/course
-  name             ;; name (Swedish 3)
-  description      ;; description (couple of sentences)
-  number-of-things ;; overall number of things to learn
-  learned          ;; number of things already learned
-  to-review        ;; number of things to review/water
-  difficult        ;; number of difficult words
-  id               ;; memrise ID of the course
-  start            ;; dashboard position where course widget starts
-  end              ;; dashboard position where course widget ends
-  )
+(jeison-defclass memrise-course nil
+  ((name :documentation "name (Swedish 3)")
+   (description :documentation "description (couple of sentences)")
+   (number-of-things :path num_things :documentation "overall number of things to learn")
+   (learned :documentation "number of things already learned")
+   (to-review :path review :documentation "number of things to review/water")
+   (difficult :documentation "number of difficult words")
+   (id :documentation "memrise ID of the course")
+   (start :documentation "dashboard position where course widget starts")
+   (end :documentation "dashboard position where course widget ends")
+   ))
 
 (defun memrise/courses ()
   (with-current-buffer (memrise/dashboard-buffer)
@@ -62,31 +63,31 @@
 (defun memrise/dashboard-course-learn (course)
   "Starts 'learning new words' session for the given course"
   (interactive (list (memrise/current-course)))
-  (let ((all (memrise/course-number-of-things course))
-        (learned (memrise/course-learned course)))
+  (let ((all (oref course number-of-things))
+        (learned (oref course learned)))
     (if (eq (- all learned) 0)
         (message "Nothing's left to learn in the course. Did you mean 'review'?")
-      (memrise/start-learn-session (memrise/course-id course)))))
+      (memrise/start-learn-session (oref course id)))))
 
 (defun memrise/dashboard-course-review (course)
   "Starts review/water session for the given course"
   (interactive (list (memrise/current-course)))
-  (let ((to-review (memrise/course-to-review course)))
+  (let ((to-review (oref course to-review)))
     (if (eq to-review 0)
         (message "Nothing to review in the course. Did you mean 'learn'?")
-      (memrise/start-review-session (memrise/course-id course)))))
+      (memrise/start-review-session (oref course id)))))
 
 (defun memrise/dashboard-course-forward (course)
   "Moves cursor to a next course on the dashboard"
   (interactive (list (memrise/current-course)))
   (let ((dest (memrise/next-course course courses)))
-    (goto-char (memrise/course-start dest))))
+    (goto-char (oref dest start))))
 
 (defun memrise/dashboard-course-backward (course)
   "Moves cursor to a previous course on the dashboard"
   (interactive (list (memrise/current-course)))
   (let ((dest (memrise/next-course course (reverse courses))))
-    (goto-char (memrise/course-start dest))))
+    (goto-char (oref dest start))))
 
 (defun memrise/display-courses (courses buffer)
   (with-current-buffer buffer
@@ -117,47 +118,38 @@
   :group 'memrise)
 
 (defun memrise/insert-course (text course)
-  (setf (memrise/course-start course) (point-marker))
+  (oset course start (point-marker))
   (insert (propertize text 'course course))
-  (setf (memrise/course-end course) (point-marker)))
+  (oset course end (point-marker)))
 
 (defun memrise/display-course (course)
-  (let* ((format-objects `((name . ,(memrise/course-name course))
-                           (learned . ,(memrise/course-learned course))
-                           (all . ,(memrise/course-number-of-things course))
+  (let* ((format-objects `((name . ,(oref course name))
+                           (learned . ,(oref course learned))
+                           (all . ,(oref course number-of-things))
                            (rev-icon . ,memrise/review-icon)
-                           (review . ,(memrise/course-to-review course))
+                           (review . ,(oref course to-review))
                            (diff-icon . ,memrise/difficult-icon)
-                           (difficult . ,(memrise/course-difficult course))
-                           (description . ,(memrise/course-description course)))))
+                           (difficult . ,(oref course difficult))
+                           (description . ,(oref course description)))))
     (memrise/insert-course (memrise/format-elements-with-faces memrise/dashboard-format format-objects memrise/dashboard-faces) course)
     (insert "\n\n")))
 
-;; it's some sort of a map from JSON field name to a memrise/course's field index
-(defvar memrise/json-to-field '((name 1)
-                                (description 2)
-                                (num_things 3)
-                                (learned 4)
-                                (review 5)
-                                (difficult 6)
-                                (id 7)))
-
-;; Course JSON parsers
-(defun memrise/parse-course (course-alist)
-  "Converts given alist object into a 'memrise/course' object"
-  (let ((result (make-memrise/course)))
-    (mapc (lambda (pair)
-              (let ((field (car pair))
-                    (index (cadr pair)))
-                (aset result index (assoc-default field course-alist))))
-          memrise/json-to-field)
-    result))
-
 (defun memrise/parse-courses (courses-list)
   "Returns a list of 'memrise/course' corresponding to the given list"
-  (mapcar 'memrise/parse-course (assoc-default 'courses courses-list)))
+  (jeison-read '(list-of memrise-course) courses-list 'courses))
 
 (provide 'memrise-dashboard)
 
 
 (defvar test '((courses . [((name . "German 3") (description . "Find your way around, talk about the future, learn some German expressions that will impress everyone you meet.") (photo . "https://d2rhekw5qr4gcj.cloudfront.net/img/400sqf/from/uploads/course_photos/16054981000161215161109.jpg") (num_things . 641) (audio_mode . t) (url . "https://www.memrise.com/course/1180560/german-3/") (id . 1180560) (category (photo . "https://d2rhekw5qr4gcj.cloudfront.net/uploads/language_photos/german.png")) (goal (goal . 1500) (points . 975) (course_id . 1180560) (streak . 0)) (learned . 0) (review . 0) (ignored . 0) (ltm . 0) (difficult . 0) (percent_complete . 0) (pro_chats . []) (grammar_chats . [((title . "Asking questions") (mission_id . 487)) ((title . "Denial (not the river)") (mission_id . 711)) ((title . "Denial Volume 2") (mission_id . 716)) ((title . "Asking questions") (mission_id . 487)) ((title . "Denial (not the river)") (mission_id . 711)) ((title . "Denial Volume 2") (mission_id . 716))])) ((name . "German 2") (description . "Build your basic vocab. Learn to count, go shopping with confidence, learn a bunch of colloquial expressions that’ll make people laugh.") (photo . "https://d2rhekw5qr4gcj.cloudfront.net/img/400sqf/from/uploads/course_photos/16054981000161215161055.jpg") (num_things . 348) (audio_mode . t) (url . "https://www.memrise.com/course/1180559/german-2/") (id . 1180559) (category (photo . "https://d2rhekw5qr4gcj.cloudfront.net/uploads/language_photos/german.png")) (goal (goal . 6000) (points . 6184) (course_id . 1180559) (streak . 1)) (learned . 348) (review . 112) (ignored . 0) (ltm . 236) (difficult . 4) (percent_complete . 100) (pro_chats . []) (grammar_chats . [((title . "Asking questions") (mission_id . 487)) ((title . "Denial (not the river)") (mission_id . 711)) ((title . "Denial Volume 2") (mission_id . 716)) ((title . "Asking questions") (mission_id . 487)) ((title . "Denial (not the river)") (mission_id . 711)) ((title . "Denial Volume 2") (mission_id . 716))])) ((name . "Swedish 1") (description . "Introduce yourself, get around, and learn a bunch of useful colloquial expressions to make people smile") (photo . "https://d2rhekw5qr4gcj.cloudfront.net/img/400sqf/from/uploads/course_photos/14005276000160822140032.jpg") (num_things . 220) (audio_mode . t) (url . "https://www.memrise.com/course/1179762/swedish-1/") (id . 1179762) (category (photo . "https://d2rhekw5qr4gcj.cloudfront.net/uploads/language_photos/DemoFlags-18_copy.png")) (goal (goal . 1500) (points . 2373) (course_id . 1179762) (streak . 2)) (learned . 188) (review . 23) (ignored . 0) (ltm . 165) (difficult . 9) (percent_complete . 85) (pro_chats . [((title . "Who are you?") (mission_id . 179)) ((title . "Who are you?") (mission_id . 179))]) (grammar_chats . [])) ((name . "German 1") (description . "Introduce yourself, get around, and learn a bunch of useful colloquial German expressions to make people smile") (photo . "https://d2rhekw5qr4gcj.cloudfront.net/img/400sqf/from/uploads/course_photos/16054981000161215161042.jpg") (num_things . 197) (audio_mode . t) (url . "https://www.memrise.com/course/1180558/german-1/") (id . 1180558) (category (photo . "https://d2rhekw5qr4gcj.cloudfront.net/uploads/language_photos/german.png")) (goal (goal . 6000) (points . 0) (course_id . 1180558) (streak . 0)) (learned . 197) (review . 197) (ignored . 0) (ltm . 0) (difficult . 10) (percent_complete . 100) (pro_chats . []) (grammar_chats . [((title . "Asking questions") (mission_id . 487)) ((title . "Denial (not the river)") (mission_id . 711)) ((title . "Denial Volume 2") (mission_id . 716)) ((title . "Asking questions") (mission_id . 487)) ((title . "Denial (not the river)") (mission_id . 711)) ((title . "Denial Volume 2") (mission_id . 716))]))]) (to_review_total . 0) (has_more_courses . :json-false)))
+
+
+
+
+
+
+
+
+
+
+
