@@ -10,11 +10,12 @@
   learnables  ;; actual things that can be learned
   )
 
-(defstruct memrise/session-task
-  learnable-id ;; id of a learnable thing to train in this task
-  template     ;; kind of a task (presentation or sentinel)
-  learn-level  ;; learn level (nil or 1-6)
-  )
+(jeison-defclass memrise-session-task nil
+  ((learnable-id :path ((string-to-number learnable_id))
+                 :documentation "id of a learnable thing to train in this task")
+   (template :documentation "kind of a task (presentation or sentinel)")
+   (learn-level :path learn_session_level
+                :documentation "learn level (nil or 1-6)")))
 
 (jeison-defclass memrise-session-learnable nil
   ((id :path ((string-to-number learnable_id))
