@@ -7,12 +7,12 @@
 (defconst memrise/home-url "https://www.memrise.com/home/")
 (defconst memrise/login-url "https://www.memrise.com/login/")
 (defconst memrise/next-home-url "https://www.memrise.com/login/?next=/home/")
-(defconst memrise/dashboard-url "http://www.memrise.com/ajax/courses/dashboard/")
+(defconst memrise/dashboard-url "https://www.memrise.com/ajax/courses/dashboard/")
 (defconst memrise/session-url "https://www.memrise.com/ajax/session/")
 
 (defun memrise/cookie ()
   "Return memrise session cookie"
-  (request-cookie-alist "www.memrise.com" "/"))
+  (request-cookie-alist "www.memrise.com" "/" t))
 
 (defun memrise/init-cookie ()
   "Request one of memrise.com pages to init cookie"
