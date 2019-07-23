@@ -18,32 +18,39 @@
                 :documentation "learn level (nil or 1-6)")))
 
 (jeison-defclass memrise-session-learnable nil
-  ((id :path ((string-to-number learnable_id))
+  ((id :type number :path ((string-to-number learnable_id))
        :documentation "a unique ID to identify the thing")
-   (text :path (item value) :documentation "text representation")
-   (translation :path (definition value)
+   (text :initform "" :path (item value) :documentation "text representation")
+   (translation :initform "" :path (definition value)
                 :documentation "translation of a text representation")
    (audio :path ((memrise/parse-session-learnable-audio nil))
           :documentation "audio representation")
-   (literal-translation :path ((memrise/parse-session-learnable-literal-translation nil))
-                        :documentation "can be nil")))
+   (literal-translation
+    :initform nil
+    :path ((memrise/parse-session-learnable-literal-translation nil))
+    :documentation "can be nil")))
 
-(defstruct memrise/session-test
-  kind     ;; one of '("multiple_choice"
-  ;;                   "reversed_multiple_choice"
-  ;;                   "audio_multiple_choice"
-  ;;                   "typing"
-  ;;                   "tapping")
-  prompt   ;; information for a test title
-  correct  ;; correct answer
-  choices  ;; other choices (do not include correct)
-  accepted ;; other accepted answers
-  )
+(jeison-defclass memrise-session-test nil
+  ;; we prefer kind to be a string not a symbol
+  ((kind :path ((cdr nil) template)
+         :documentation "one of '(\"multiple_choice\"
+\"reversed_multiple_choice\"
+\"audio_multiple_choice\"
+\"typing\"
+\"tapping\")")
+   (prompt :path ((cdr nil) (memrise/parse-session-test-prompt prompt))
+           :documentation "information for a test title")
+   (correct :path ((cdr nil) answer value)
+            :documentation "correct answer")
+   (choices :type (list-of t) :path ((cdr nil) choices)
+            :documentation "other choices (do not include correct)")
+   (accepted :type (list-of t) :path ((cdr nil) correct)
+             :documentation "other accepted answers")))
 
-(defstruct memrise/session-test-prompt
-  text  ;; text to show
-  audio ;; audio to play (can be nil)
-  video ;; video to show (can be nil)
-  )
+(jeison-defclass memrise-session-test-prompt nil
+  ((text :initform "" :path (text value) :documentation "Text to show")
+   (audio :initform "" :path (memrise/parse-session-audio audio)
+          :documentation "Audio to play (can be nil)")
+   (video :initform "" :documentation "Video to show (can be nil)")))
 
 (provide 'memrise-session-objects)

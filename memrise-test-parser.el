@@ -3,40 +3,20 @@
 (require 'memrise-media)
 
 (defun memrise/parse-session-test (json)
-  (let* ((kind (symbol-name (car json))) ;; kind would be a string
-         (body (cdr json))
-         (prompt (memrise/parse-session-test-prompt
-                  (assoc-default 'prompt body)))
-         (correct-json (assoc-default 'answer body))
-         (correct (assoc-default 'value correct-json))
-         (choices (memrise/vector-to-list
-                   (assoc-default 'choices body)))
-         (accepted (memrise/vector-to-list
-                    (assoc-default 'correct body))))
+  (let* ((result (jeison-read memrise-session-test json))
+         (kind (oref result kind)))
     ;; if test is an audio test we should download all audios
     (when (s-contains? "audio" kind)
-      (setq correct (memrise/download-normal-pace-audio correct))
-      (setq choices (memrise/process-media "audio" choices))
-      (setq accepted (memrise/process-media "audio" accepted)))
-    `(,kind . ,(make-memrise/session-test
-                :kind kind
-                :prompt prompt
-                :correct correct
-                :choices choices
-                :accepted accepted))))
+      (oset result correct (memrise/download-normal-pace-audio
+                            (oref result correct)))
+      (oset result choices (memrise/process-media "audio"
+                                                  (oref result choices)))
+      (oset result accepted (memrise/process-media "audio"
+                                                   (oref result accepted))))
+    (cons kind result)))
 
 (defun memrise/parse-session-test-prompt (json)
-  (let* ((text-json (assoc-default 'text json))
-         (text (assoc-default 'value text-json))
-         (audio (memrise/parse-session-audio
-                 (assoc-default 'audio json)))
-         (video (memrise/process-media
-                 "video"
-                 (assoc-default 'video json))))
-    (make-memrise/session-test-prompt
-     :text text
-     :audio audio
-     :video video)))
+  (jeison-read memrise-session-test-prompt json))
 
 (defun memrise/parse-session-audio (json)
   (let* ((value (assoc-default 'value json)))
