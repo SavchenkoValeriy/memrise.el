@@ -58,7 +58,7 @@
           (assoc-default 'screens json)))
 
 (defun memrise/parse-session-learnable-tests (json)
-  (let* ((id (car json))
+  (let* ((id (string-to-number (symbol-name (car json))))
          (body (cdr json))
          (tests (mapcar #'memrise/parse-session-test body)))
     `(,id . ,tests)))
