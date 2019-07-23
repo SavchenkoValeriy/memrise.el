@@ -8,9 +8,7 @@
                  (if (vectorp vector-or-list)
                      (memrise/vector-to-list vector-or-list)
                    vector-or-list))))
-    (if (eq (length result) 1)
-        (car result)
-      result)))
+    result))
 
 (defun memrise/download-media (folder urls)
   (mapcar (-partial #'memrise/download folder) urls))
