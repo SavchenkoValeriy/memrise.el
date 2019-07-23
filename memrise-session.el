@@ -2,6 +2,7 @@
 
 (require 'memrise-request)
 (require 'memrise-widget)
+(require 'memrise-session-parser)
 (require 'dash)
 (require 'emms)
 (require 's)
@@ -23,23 +24,23 @@ Completion doesn't really help a learning process."
   (get-buffer-create "*session*"))
 
 (defun memrise/start-learn-session (course-id)
-  "Starts a new memrise learn session"
+  "Start a new memrise learn session"
   (memrise/start-session course-id "learn"))
 
 (defun memrise/start-review-session (course-id)
-  "Starts a new memrise review/water session"
+  "Start a new memrise review/water session"
   (memrise/start-session course-id "classic_review"))
 
 (defun memrise/start-session (course-id type)
-  "Starts a new memrise session"
+  "Start a new memrise session"
   (lexical-let ((buffer (memrise/session-buffer)))
     (with-current-buffer buffer
-;;      (memrise/request-session
-;;       course-id
-;;       type
-;;       'memrise/start-session-internal)
-      (memrise/start-session-internal session-test)
-      (switch-to-buffer buffer))))
+      (memrise/request-session
+       course-id
+       type
+       'memrise/start-session-internal)
+      ;;(memrise/start-session-internal swedish-learn)
+      )))
 
 (defun memrise/start-session-internal (json)
   (with-current-buffer (memrise/session-buffer)
@@ -64,22 +65,25 @@ Completion doesn't really help a learning process."
 
 (defun memrise/display-tasks (tasks)
   (lexical-let* ((task (car tasks))
-                 (learnable (assoc-default (memrise/session-task-learnable-id task)
+                 (learnable (assoc-default (oref task learnable-id)
                                            (memrise/session-learnables session))))
     (setq next-task (-partial 'memrise/display-next-task-internal tasks))
     (setq main-widget nil)
     (setq main-widget
-          (if (string= (memrise/session-task-template task)
+          (if (string= (oref task template)
                        "presentation")
               (memrise/presentation learnable)
             (memrise/pick-and-display-test learnable
-                                           (memrise/session-task-learn-level task))))
+                                           (oref task learn-level))))
     (widget-setup)))
 
 (defun memrise/pick-and-display-test (learnable level)
-  (let ((tests (memrise/session-learnable-tests learnable))
-        (number-of-choices (memrise/decide-number-of-choices level)))
-    (memrise/display-test (memrise/pick-test tests level)
+  (let* ((all-tests (memrise/session-tests session))
+         (tests-for-this-learnable (assoc-default
+                                    (oref learnable id)
+                                    all-tests))
+         (number-of-choices (memrise/decide-number-of-choices level)))
+    (memrise/display-test (memrise/pick-test tests-for-this-learnable level)
                           number-of-choices)))
 
 (defvar memrise/minimal-number-of-choices 4)
@@ -96,12 +100,13 @@ Completion doesn't really help a learning process."
 
 (defun memrise/pick-test (tests level)
   "According to the given `level' picks one of the `tests'"
-  (if (eq level 1)
-      (assoc-default "multiple_choice")
-    (cdr (memrise/random-element tests))))
+  (or (assoc-default "tapping" tests)
+      (if (eq level 1)
+          (assoc-default "multiple_choice" tests)
+        (cdr (memrise/random-element tests)))))
 
 (defun memrise/display-test (test number)
-  (pcase (memrise/session-test-kind test)
+  (pcase (oref test kind)
     ("multiple_choice"          (memrise/multiple-choice-widget test number))
     ("reversed_multiple_choice" (memrise/reversed-multiple-choice-widget test number))
     ("audio_multiple_choice"    (memrise/audio-multiple-choice-widget
