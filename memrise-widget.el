@@ -171,8 +171,7 @@ with a translation of a given word in a source language.
          (on-submit-hook (widget-get widget :on-submit-hook))
          (instant-submit (widget-get widget :instant-submit))
          (labels         (widget-get widget :labels))
-         (audio          (memrise/session-test-prompt-audio
-                          (memrise/session-test-prompt test)))
+         (audio          (oref (oref test prompt) audio))
          (text           (memrise/format-widget prefix-format test))
          (choices        (memrise/widget-choices test size)))
     ;; all child buttons should have the same shape using
@@ -234,8 +233,7 @@ with a translation of a given word in a source language.
 (defun memrise/get-audio-from-test (widget)
   "Extracts audio file from `WIDGET's test."
   (let ((test (widget-get widget :test)))
-    (memrise/session-test-prompt-audio
-     (memrise/session-test-prompt test))))
+    (oref (oref test prompt) audio)))
 
 (defun memrise/widget-run-hooks (hooks widget)
   "Run `HOOKS' with `WIDGET' as their argument."
@@ -308,7 +306,7 @@ with a translation of a given word in a source language.
                                        (memrise/get-pretty-binding
                                         memrise/input-mode-key))))
                 (buttons (memrise/create-pick-buttons
-                          (memrise/session-test-choices test)
+                          (oref test choices)
                           widget
                           memrise/input-mode-map
                           t)))
@@ -425,8 +423,8 @@ with a translation of a given word in a source language.
   (lexical-let* ((min     (widget-get widget :min))
                  (max     (widget-get widget :max))
                  (choices (memrise/construct-choices
-                           (memrise/session-test-correct test)
-                           (memrise/session-test-choices test)
+                           (oref test correct)
+                           (oref test choices)
                            max min))
                  (buttons (memrise/create-pick-buttons
                            choices widget nil nil
@@ -478,7 +476,7 @@ with a translation of a given word in a source language.
 
 (defun memrise/get-correct-answer (widget)
   "Return a correct answer for a test represented by `WIDGET'."
-  (memrise/session-test-correct (widget-get widget :test)))
+  (oref (widget-get widget :test) correct))
 
 (defun memrise/widget-setup-audio (widget)
   "Define audio behavior for the given memrise `WIDGET'.
@@ -515,8 +513,8 @@ Provided `WIDGET' should have the following properties:
 
 (defun memrise/widget-choices (test number)
   "For the given `TEST' pick a `NUMBER' of translation choices for a quiz."
-  (memrise/construct-choices (memrise/session-test-correct test)
-                             (memrise/session-test-choices test)
+  (memrise/construct-choices (oref test correct)
+                             (oref test choices)
                              number))
 
 (defun memrise/construct-choices
@@ -528,7 +526,7 @@ Provided `WIDGET' should have the following properties:
 `NUMBER' - number of choices in the result list.
 `MINIMAL' - minimal number of incorrect choices."
   (unless minimal
-    setq minimal 0)
+    (setq minimal 0))
   (let* ((concat (if (sequencep correct) 'append 'cons))
          (correct-size (if (sequencep correct)
                            (length correct)
@@ -542,16 +540,16 @@ Provided `WIDGET' should have the following properties:
   "Return an alist to use for widget formating.
 
 `TEST-OR-LEARNABLE' is an object to retrieve info to display."
-  (let ((prompt (make-memrise/session-test-prompt))
-        (learnable (make-memrise/session-learnable)))
-    (when (memrise/session-test-p test-or-learnable)
-      (setq prompt (memrise/session-test-prompt test-or-learnable)))
-    (when (memrise/session-learnable-p test-or-learnable)
+  (let ((prompt (memrise-session-test-prompt))
+        (learnable (memrise-session-learnable)))
+    (when (memrise-session-test-p test-or-learnable)
+      (setq prompt (oref test-or-learnable prompt)))
+    (when (memrise-session-learnable-p test-or-learnable)
       (setq learnable test-or-learnable))
-    `((text . ,(memrise/session-learnable-text learnable))
-      (translation . ,(memrise/session-learnable-translation learnable))
-      (literal-translation . ,(or (memrise/session-learnable-literal-translation learnable) ""))
-      (prompt . ,(memrise/session-test-prompt-text prompt))
+    `((text . ,(oref learnable text))
+      (translation . ,(oref learnable translation))
+      (literal-translation . ,(or (oref learnable literal-translation) ""))
+      (prompt . ,(oref prompt text))
       (source . ,(memrise/session-source session))
       (target . ,(memrise/session-target session)))))
 
