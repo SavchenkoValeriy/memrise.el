@@ -56,17 +56,17 @@ Completion doesn't really help a learning process."
 (defun memrise/display-session ()
   (make-local-variable 'main-widget)
   (make-local-variable 'next-task)
-  (widget-insert (memrise/session-course-name session))
+  (widget-insert (oref session course-name))
   (widget-insert "\n")
-  (widget-insert (or (memrise/session-title session)
+  (widget-insert (or (oref session title)
                      "Review"))
   (widget-insert "\n\n")
-  (memrise/display-tasks (memrise/session-tasks session)))
+  (memrise/display-tasks (oref session tasks)))
 
 (defun memrise/display-tasks (tasks)
   (lexical-let* ((task (car tasks))
                  (learnable (assoc-default (oref task learnable-id)
-                                           (memrise/session-learnables session))))
+                                           (oref session learnables))))
     (setq next-task (-partial 'memrise/display-next-task-internal tasks))
     (setq main-widget nil)
     (setq main-widget
@@ -78,7 +78,7 @@ Completion doesn't really help a learning process."
     (widget-setup)))
 
 (defun memrise/pick-and-display-test (learnable level)
-  (let* ((all-tests (memrise/session-tests session))
+  (let* ((all-tests (oref session tests))
          (tests-for-this-learnable (assoc-default
                                     (oref learnable id)
                                     all-tests))

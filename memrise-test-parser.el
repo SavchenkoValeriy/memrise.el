@@ -15,16 +15,8 @@
                                                    (oref result accepted))))
     (cons kind result)))
 
-(defun memrise/parse-session-test-prompt (json)
-  (jeison-read memrise-session-test-prompt json))
-
-(defun memrise/parse-session-audio (json)
-  (let* ((value (assoc-default 'value json)))
-    (memrise/download-normal-pace-audio value)))
-
 (defun memrise/download-normal-pace-audio (json)
-  (let* ((audios (elt json 0))
-         (audio (assoc-default 'normal audios)))
+  (let ((audio (jeison-read t json '(0 normal))))
     (when audio
       (memrise/process-media "audio" (list audio)))))
 

@@ -95,7 +95,7 @@
 
 (defun memrise/get-audio-from-learnable (widget)
   "Extracts audio file from `WIDGET's learnable."
-  (memrise/session-learnable-audio (widget-get widget :learnable)))
+  (oref (widget-get widget :learnable) audio))
 
 (defun memrise/multiple-choice-widget (test number)
   "Create mutliple choice `TEST'.
@@ -550,8 +550,8 @@ Provided `WIDGET' should have the following properties:
       (translation . ,(oref learnable translation))
       (literal-translation . ,(or (oref learnable literal-translation) ""))
       (prompt . ,(oref prompt text))
-      (source . ,(memrise/session-source session))
-      (target . ,(memrise/session-target session)))))
+      (source . ,(oref session source))
+      (target . ,(oref session target)))))
 
 (defun memrise/session-itemize-choices (choices)
   "Turn `CHOICES' into items."
