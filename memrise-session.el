@@ -2,6 +2,7 @@
 
 (require 'memrise-request)
 (require 'memrise-widget)
+(require 'memrise-session-objects)
 (require 'memrise-session-parser)
 (require 'dash)
 (require 'emms)
