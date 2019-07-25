@@ -529,8 +529,8 @@ Provided `WIDGET' should have the following properties:
 `MINIMAL' - minimal number of incorrect choices."
   (unless minimal
     (setq minimal 0))
-  (let* ((concat (if (sequencep correct) 'append 'cons))
-         (correct-size (if (sequencep correct)
+  (let* ((concat (if (listp correct) 'append 'cons))
+         (correct-size (if (listp correct)
                            (length correct)
                          1))
          (incorrect-size (max (- number correct-size) minimal))
