@@ -2,13 +2,10 @@
 
 (require 'memrise-utils)
 
-(defun memrise/process-media (folder vector-or-list)
-  (let ((result (memrise/download-media
-                 folder
-                 (if (vectorp vector-or-list)
-                     (memrise/vector-to-list vector-or-list)
-                   vector-or-list))))
-    result))
+(defun memrise/process-media (folder list-or-element)
+  (if (listp list-or-element)
+      (memrise/download-media folder list-or-element)
+    (memrise/download folder list-or-element)))
 
 (defun memrise/download-media (folder urls)
   (mapcar (-partial #'memrise/download folder) urls))

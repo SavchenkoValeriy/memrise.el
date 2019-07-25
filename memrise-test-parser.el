@@ -18,6 +18,6 @@
 (defun memrise/download-normal-pace-audio (json)
   (let ((audio (jeison-read t json '(0 normal))))
     (when audio
-      (memrise/process-media "audio" (list audio)))))
+      (memrise/process-media "audio" audio))))
 
 (provide 'memrise-test-parser)
