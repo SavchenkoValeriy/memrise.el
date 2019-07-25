@@ -102,10 +102,14 @@ Completion doesn't really help a learning process."
 
 (defun memrise/pick-test (tests level)
   "According to the given `level' picks one of the `tests'"
-  (or (assoc-default "tapping" tests)
-      (if (eq level 1)
-          (assoc-default "multiple_choice" tests)
-        (cdr (memrise/random-element tests)))))
+  ;; filter out "pronunciation" tests for now
+  (let ((tests (seq-filter
+                (lambda (test) (not (equal (car test) "pronunciation")))
+                tests)))
+    (or (assoc-default "tapping" tests)
+        (if (eq level 1)
+            (assoc-default "multiple_choice" tests)
+          (cdr (memrise/random-element tests))))))
 
 (defun memrise/display-test (test number)
   (pcase (oref test kind)
