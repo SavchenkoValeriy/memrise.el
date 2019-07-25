@@ -55,7 +55,7 @@
 
 (jeison-defclass memrise-session-test-prompt nil
   ((text :initform "" :path (text value) :documentation "Text to show")
-   (audio :initform nil :path (memrise/download-normal-pace-audio audio value)
+   (audio :initform nil :path (audio (memrise/download-normal-pace-audio value))
           :documentation "Audio to play (can be nil)")
    (video :initform nil :documentation "Video to show (can be nil)")))
 
