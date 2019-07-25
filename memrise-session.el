@@ -34,7 +34,8 @@ Completion doesn't really help a learning process."
 
 (defun memrise/start-session (course-id type)
   "Start a new memrise session"
-  (lexical-let ((buffer (memrise/session-buffer)))
+  (let ((buffer (memrise/session-buffer))
+        (json-array-type 'list))
     (with-current-buffer buffer
       (memrise/request-session
        course-id

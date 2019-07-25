@@ -195,13 +195,15 @@ with a translation of a given word in a source language.
 
 (defun memrise/choice-widget-submit-answer (widget)
   "Read the value of `WIDGET' and submit it as the answer."
-  (let ((correct (memrise/get-correct-answer widget))
-        (given (widget-value widget)))
+  (let* ((test (widget-get widget :test))
+         (answer (oref test answer))
+         (correct (oref test correct))
+         (given (widget-value widget)))
     (if (not given)
         (message "Please, give an answer first!")
-      (if (string= correct given)
+      (if (-contains-p correct given)
           (message "Correct!")
-        (message "Oops, correct answer is \"%s\"" correct))
+        (message "Oops, correct answer is \"%s\"" answer))
       ;; to abandon user from picking other choices after
       ;; submitting her answer, turn off buttons...
       (mapc (lambda (x) (widget-apply x :deactivate))
@@ -425,7 +427,8 @@ with a translation of a given word in a source language.
                  (max     (widget-get widget :max))
                  (test    (widget-get widget :test))
                  (choices (memrise/construct-choices
-                           (oref test correct)
+                           ;; correct is always a list
+                           (car (oref test correct))
                            (oref test choices)
                            max min))
                  (buttons (memrise/create-pick-buttons
@@ -515,7 +518,7 @@ Provided `WIDGET' should have the following properties:
 
 (defun memrise/widget-choices (test number)
   "For the given `TEST' pick a `NUMBER' of translation choices for a quiz."
-  (memrise/construct-choices (oref test correct)
+  (memrise/construct-choices (car (oref test correct))
                              (oref test choices)
                              number))
 

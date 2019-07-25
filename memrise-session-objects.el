@@ -46,12 +46,12 @@
 \"tapping\")")
    (prompt :type memrise-session-test-prompt
            :documentation "information for a test title")
-   (correct :path (answer value)
-            :documentation "correct answer")
+   (answer :path (answer value)
+           :documentation "correct answer")
    (choices :type (list-of t)
             :documentation "other choices (do not include correct)")
-   (accepted :type (list-of t) :path correct
-             :documentation "other accepted answers")))
+   (correct :type (list-of t) :path correct
+            :documentation "accepted answers")))
 
 (jeison-defclass memrise-session-test-prompt nil
   ((text :initform "" :path (text value) :documentation "Text to show")
