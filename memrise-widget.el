@@ -300,16 +300,17 @@ with a translation of a given word in a source language.
     (goto-char (widget-field-start widget))))
 
 (defun memrise/setup-default-input-mode (widget)
-  (lexical-let ((hint (widget-create
-                       'item
-                       :format (format "Press %s to turn input mode on/off:\n"
-                                       (memrise/get-pretty-binding
-                                        memrise/input-mode-key))))
-                (buttons (memrise/create-pick-buttons
-                          (oref test choices)
-                          widget
-                          memrise/input-mode-map
-                          t)))
+  (lexical-let* ((hint (widget-create
+                        'item
+                        :format (format "Press %s to turn input mode on/off:\n"
+                                        (memrise/get-pretty-binding
+                                         memrise/input-mode-key))))
+                 (test (widget-get widget :test))
+                 (buttons (memrise/create-pick-buttons
+                           (oref test choices)
+                           widget
+                           memrise/input-mode-map
+                           t)))
     (widget-put widget :buttons (cons hint buttons))
     (local-set-key memrise/input-mode-key
                    (memrise/make-interactive (-partial
@@ -422,6 +423,7 @@ with a translation of a given word in a source language.
 (defun memrise/setup-tapping-choices (widget)
   (lexical-let* ((min     (widget-get widget :min))
                  (max     (widget-get widget :max))
+                 (test    (widget-get widget :test))
                  (choices (memrise/construct-choices
                            (oref test correct)
                            (oref test choices)
