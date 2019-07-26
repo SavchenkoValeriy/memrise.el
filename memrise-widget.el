@@ -184,7 +184,8 @@ with a translation of a given word in a source language.
     (widget-put widget :args (memrise/session-itemize-choices choices))
     (if instant-submit
         (widget-put widget :notify (memrise/make-widget-callback submit))
-      (local-set-key (kbd "C-m") (memrise/make-interactive (-partial submit widget))))
+      (local-set-key (kbd "C-m") (memrise/make-interactive
+                                  (-partial submit widget))))
     (widget-default-create widget)
     (when assign-keys
       (memrise/assign-buttons-keybindings (widget-get widget :buttons)
@@ -197,7 +198,7 @@ with a translation of a given word in a source language.
   "Read the value of `WIDGET' and submit it as the answer."
   (let* ((test (widget-get widget :test))
          (answer (oref test answer))
-         (given (widget-value widget)))
+         (given (memrise--widget-get-answer widget)))
     (if (not given)
         (message "Please, give an answer first!")
       (if (memrise--is-answer-correct test given)
@@ -215,6 +216,12 @@ with a translation of a given word in a source language.
                    #'memrise/call-after-all-audio-is-finished
                    #'memrise/display-next-task
                    widget))))
+
+(defun memrise--widget-get-answer (widget)
+  (let ((get-answer (widget-get widget :get-answer)))
+    (if get-answer
+        (funcall get-answer widget)
+      (widget-value widget))))
 
 (defun memrise--is-answer-correct (test answer)
   "TODO"
@@ -337,7 +344,7 @@ with a translation of a given word in a source language.
     (memrise/activate-widgets buttons)))
 
 (defun memrise/tapping-widget (test)
-  "Create typing `TEST'."
+  "Create tapping `TEST'."
   (widget-create 'memrise/tapping-widget
                  :test test
                  :prefix-format memrise/tapping-format
@@ -348,14 +355,15 @@ with a translation of a given word in a source language.
   "Widget for tapping choices for memrise tests."
   :test nil
   :prefix-format ""
-  :create 'memrise/tapping-widget-create
+  :create #'memrise/tapping-widget-create
   :requires-audio nil
   :instant-submit t
   :assign-keys t
   :on-submit-hook nil
   :min 4
   :max 8
-  :submit 'memrise/choice-widget-submit-answer)
+  :submit #'memrise/choice-widget-submit-answer
+  :get-answer #'memrise--tapping-get-answer)
 
 (defun memrise/tapping-widget-create (widget)
   "Create a memrise/tapping-widget from `WIDGET'."
@@ -381,6 +389,19 @@ with a translation of a given word in a source language.
                               #'memrise/delete-next-tap-word))
   (local-set-key [backspace] (memrise/make-interactive
                               #'memrise/delete-previous-tap-word)))
+
+(defun memrise--tapping-get-answer (widget)
+  (save-excursion
+    (-unfold #'memrise--tapping-get-answer-internal
+             (widget-field-start widget))))
+
+(defun memrise--tapping-get-answer-internal (where)
+  (goto-char where)
+  (when-let* ((tap-word (memrise/get-this-tap-word))
+              (end (overlay-end tap-word))
+              (word (buffer-substring-no-properties (overlay-start tap-word)
+                                                    (1- end))))
+    (cons word end)))
 
 (defun memrise/delete-next-tap-word ()
   (let ((tap-word (memrise/get-this-or-next-tap-word)))
@@ -459,6 +480,7 @@ with a translation of a given word in a source language.
 
 (defun memrise/pick-button-insert-complex-value (widget &optional _event)
   (let* ((parent (widget-get widget :parent))
+         (next-tap-word (memrise/get-next-tap-word))
          (start (or (memrise/goto-field parent)
                     (memrise/goto-next-tap-word)
                     (point)))
@@ -468,13 +490,13 @@ with a translation of a given word in a source language.
     (insert " ")
     (setq end (point))
     (setq overlay (make-overlay start end))
-    (overlay-put overlay 'tap t)))
+    (overlay-put overlay 'tap t)
+    (when next-tap-word
+      (move-overlay next-tap-word end (overlay-end next-tap-word)))))
 
 (defun memrise/goto-next-tap-word ()
-  (let ((tap-word (memrise/get-this-or-next-tap-word)))
-    (if tap-word
-        (goto-char (overlay-end tap-word))
-      nil)))
+  (when-let ((tap-word (memrise/get-this-or-next-tap-word)))
+    (goto-char (overlay-end tap-word))))
 
 (defun memrise/goto-field (field-widget)
   "Goto editable field of `FIELD_WIDGET' if not there."
