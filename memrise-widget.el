@@ -197,11 +197,10 @@ with a translation of a given word in a source language.
   "Read the value of `WIDGET' and submit it as the answer."
   (let* ((test (widget-get widget :test))
          (answer (oref test answer))
-         (correct (oref test correct))
          (given (widget-value widget)))
     (if (not given)
         (message "Please, give an answer first!")
-      (if (-contains-p correct given)
+      (if (memrise--is-answer-correct test given)
           (message "Correct!")
         (message "Oops, correct answer is \"%s\"" answer))
       ;; to abandon user from picking other choices after
@@ -216,6 +215,10 @@ with a translation of a given word in a source language.
                    #'memrise/call-after-all-audio-is-finished
                    #'memrise/display-next-task
                    widget))))
+
+(defun memrise--is-answer-correct (test answer)
+  "TODO"
+  (-contains-p (oref test correct) answer))
 
 (defun memrise/call-after-all-audio-is-finished (func &rest args)
   "Call `FUNC' with `ARGS' after all audio is over."
@@ -289,8 +292,9 @@ with a translation of a given word in a source language.
     (widget-put widget :keymap nil)
     (when instant-submit
       (widget-put widget :notify (lambda (widget &rest _)
-                                   (when (string= (widget-value widget)
-                                                  (memrise/get-correct-answer widget))
+                                   (when (memrise--is-answer-correct
+                                          test
+                                          (widget-value widget))
                                      (funcall submit widget)))))
     (widget-default-create widget)
     ;;    (use-local-map widget-field-keymap)
