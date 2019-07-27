@@ -9,6 +9,7 @@
 (defconst memrise/next-home-url "https://www.memrise.com/login/?next=/home/")
 (defconst memrise/dashboard-url "https://www.memrise.com/ajax/courses/dashboard/")
 (defconst memrise/session-url "https://www.memrise.com/ajax/session/")
+(defconst memrise/register-url "https://www.memrise.com/ajax/learning/register")
 
 (defun memrise/cookie ()
   "Return memrise session cookie"
@@ -87,6 +88,24 @@
      :parser #'json-read
      :success (cl-function (lambda (&key data &allow-other-keys)
                              (funcall inner data))))))
+
+(defun memrise--request-send-answer (learnable-id
+                                     course-id
+                                     template
+                                     points
+                                     time-spent)
+  (request
+   memrise/register-url
+   :type "POST"
+   :data `(("learnable_id" . ,learnable-id)
+           ("box_template" . ,template)
+           ("score" . ,(if (= points 0) 0 1))
+           ("points" . ,points)
+           ("course_id" . ,course-id)
+           ("time_spent" . ,time-spent)
+           ("fully_grow" . ,nil))
+   :headers `(("Referer" . ,memrise/home-url)
+              ("x-csrftoken" . ,(memrise/get-csrf-token)))))
 
 (defun memrise/login-and-retry (func &rest args)
   (call-interactively 'memrise/login)
