@@ -51,6 +51,7 @@ Completion doesn't really help a learning process."
       (erase-buffer)
       (memrise-session-mode)
       (make-local-variable 'session)
+      (make-local-variable 'learnable)
       (setq session (memrise/parse-session json))
       (memrise/display-session)
       (switch-to-buffer (memrise/session-buffer)))))
@@ -67,8 +68,9 @@ Completion doesn't really help a learning process."
 
 (defun memrise/display-tasks (tasks)
   (lexical-let* ((task (car tasks))
-                 (learnable (assoc-default (oref task learnable-id)
-                                           (oref session learnables))))
+                 (selected-learnable (assoc-default (oref task learnable-id)
+                                                    (oref session learnables))))
+    (setq learnable selected-learnable)
     (setq next-task (-partial 'memrise/display-next-task-internal tasks))
     (setq main-widget nil)
     (setq main-widget

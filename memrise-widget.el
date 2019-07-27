@@ -5,6 +5,7 @@
 ;;; Code:
 
 (require 'memrise-utils)
+(require 'memrise-request)
 (require 'widget)
 (require 'wid-edit)
 (require 'dash)
@@ -201,21 +202,34 @@ with a translation of a given word in a source language.
          (given (memrise--widget-get-answer widget)))
     (if (not given)
         (message "Please, give an answer first!")
-      (if (memrise--is-answer-correct test given)
-          (message "Correct!")
-        (message "Oops, correct answer is \"%s\"" answer))
-      ;; to abandon user from picking other choices after
-      ;; submitting her answer, turn off buttons...
-      (mapc (lambda (x) (widget-apply x :deactivate))
-            (widget-get widget :buttons))
-      ;; ...and disable key-bindings
-      (memrise/reset-session-bindings)
-      (memrise/widget-run-hooks (widget-get widget :on-submit-hook) widget)
-      (run-at-time "0.5 sec"
-                   nil
-                   #'memrise/call-after-all-audio-is-finished
-                   #'memrise/display-next-task
-                   widget))))
+      (let ((correct? (memrise--is-answer-correct test given)))
+        (if correct?
+            (message "Correct!")
+          (message "Oops, correct answer is \"%s\"" answer))
+        ;; to abandon user from picking other choices after
+        ;; submitting her answer, turn off buttons...
+        (mapc (lambda (x) (widget-apply x :deactivate))
+              (widget-get widget :buttons))
+        ;; ...and disable key-bindings
+        (memrise/reset-session-bindings)
+        (memrise--request-send-answer
+         learnable
+         (oref session course-id)
+         (oref test kind)
+         given
+         (memrise--get-number-of-points test)
+         ;; TODO: time the test for real
+         5000)
+        (memrise/widget-run-hooks (widget-get widget :on-submit-hook) widget)
+        (run-at-time "0.5 sec"
+                     nil
+                     #'memrise/call-after-all-audio-is-finished
+                     #'memrise/display-next-task
+                     widget)))))
+
+(defun memrise--get-number-of-points (test)
+  ;; TODO: calculate the number of points based on the current session and test
+  45)
 
 (defun memrise--widget-get-answer (widget)
   (let ((get-answer (widget-get widget :get-answer)))

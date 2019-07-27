@@ -30,11 +30,11 @@
 (defun memrise/to-buffer (buffer)
   (interactive)
   `(lambda () (let ((oldbuf (current-buffer)))
-          (with-current-buffer (get-buffer-create ,buffer)
-            (barf-if-buffer-read-only)
-            (erase-buffer)
-            (save-excursion
-              (insert-buffer-substring oldbuf))))))
+           (with-current-buffer (get-buffer-create ,buffer)
+             (barf-if-buffer-read-only)
+             (erase-buffer)
+             (save-excursion
+               (insert-buffer-substring oldbuf))))))
 
 (defun memrise/debug-result ()
   (funcall (memrise/to-buffer "result")))
@@ -89,23 +89,31 @@
      :success (cl-function (lambda (&key data &allow-other-keys)
                              (funcall inner data))))))
 
-(defun memrise--request-send-answer (learnable-id
+(defun memrise--request-send-answer (learnable
                                      course-id
                                      template
+                                     given-answer
                                      points
                                      time-spent)
   (request
    memrise/register-url
    :type "POST"
-   :data `(("learnable_id" . ,learnable-id)
+   :data `(("learnable_id" . ,(oref learnable id))
            ("box_template" . ,template)
            ("score" . ,(if (= points 0) 0 1))
            ("points" . ,points)
            ("course_id" . ,course-id)
            ("time_spent" . ,time-spent)
-           ("fully_grow" . ,nil))
-   :headers `(("Referer" . ,memrise/home-url)
-              ("x-csrftoken" . ,(memrise/get-csrf-token)))))
+           ("fully_grow" . ,nil)
+           ("learning_element" . ,(oref learnable text))
+           ("given_answer" . ,given-answer)
+           ("definition_element" . ,(oref learnable translation)))
+   :encoding 'utf-8
+   :headers `(("referer" . ,memrise/home-url)
+              ("x-csrftoken" . ,(memrise/get-csrf-token))
+              ("origin" . ,memrise/url)
+              ("authority" . "www.memrise.com")
+              ("x-requested-with" . "XMLHttpRequest"))))
 
 (defun memrise/login-and-retry (func &rest args)
   (call-interactively 'memrise/login)
