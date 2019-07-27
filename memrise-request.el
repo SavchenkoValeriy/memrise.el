@@ -85,7 +85,7 @@
      :params `(("course_id" . ,course-id)
                ("session_slug" . ,type)
                ("_" . ,(memrise/get-session-id)))
-     :parser #'json-read
+     :parser #'memrise--json-read
      :success (cl-function (lambda (&key data &allow-other-keys)
                              (funcall inner data))))))
 
@@ -118,5 +118,9 @@
 (defun memrise/login-and-retry (func &rest args)
   (call-interactively 'memrise/login)
   (apply func args))
+
+(defun memrise--json-read ()
+  (let ((json-array-type 'list))
+    (json-read)))
 
 (provide 'memrise-request)
