@@ -1,6 +1,5 @@
-(use-package request :ensure t)
-
 (require 'memrise-utils)
+(require 'request)
 (require 'cl)
 
 (defconst memrise/url "https://www.memrise.com")

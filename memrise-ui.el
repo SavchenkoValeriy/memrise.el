@@ -46,20 +46,22 @@
   "Face for the number of things marked as 'difficult' to show on a dashboard"
   :group 'memrise/faces)
 
+(defun memrise--get-default-height ()
+  "Return a default height of text."
+  (let ((result (face-attribute 'default :height)))
+    ;; default height is not specified (probably in tests)
+    (if (eq result 'unspecified)
+        100
+      result)))
+
 (defface memrise-dashboard-description
   `((t :inherit font-lock-comment-face
-       :height ,(floor (* 0.7
-                          (face-attribute font-lock-comment-face
-                                          :height
-                                          nil
-                                          'default)))))
+       :height ,(floor (* 0.7 (memrise--get-default-height)))))
   "Face for course description to show on a dashboard"
   :group 'memrise/faces)
 
 (defface memrise-session-thing
-  `((t :height ,(floor (* 1.5
-                          (face-attribute 'default
-                                          :height)))))
+  `((t :height ,(floor (* 1.5 (memrise--get-default-height)))))
   "Face for thing to show during sessions"
   :group 'memrise/faces)
 

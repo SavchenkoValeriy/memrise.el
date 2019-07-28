@@ -1,6 +1,7 @@
 (require 'memrise-request)
 (require 'memrise-session)
 (require 'memrise-ui)
+(require 'all-the-icons)
 (require 'jeison)
 
 (defvar memrise-mode-map
