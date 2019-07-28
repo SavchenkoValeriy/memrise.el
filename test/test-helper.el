@@ -16,4 +16,23 @@
 (defun memrise:mocked (&rest args)
   (format "mock-%S" args))
 
+(defmacro with-memrise-test-session (&rest body)
+  (declare (indent 1) (debug t))
+  `(with-current-buffer (memrise/session-buffer)
+     (let ((inhibit-read-only t))
+       (kill-all-local-variables)
+       (erase-buffer)
+       (memrise-session-mode)
+       (make-local-variable 'session)
+       (make-local-variable 'learnable)
+       (setq session (memrise-session :title "Test course"
+                                      :source "A"
+                                      :target "B"))
+       (setq learnable (memrise-session-learnable))
+       ,@body)))
+
+(defun memrise:contains-all (text &rest needles)
+  "Return true if all `NEEDLES' are in the `TEXT'."
+  (--every-p (s-contains-p it text) needles))
+
 ;;; test-helper.el ends here

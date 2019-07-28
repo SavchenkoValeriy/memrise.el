@@ -7,18 +7,18 @@
                 :documentation "Name of the course (e.g. Russian 2)")
    (course-id :path (session course_id)
               :documentation "Internal ID of the course")
-   (title :path (session level title)
+   (title :path (session level title) :initarg :title
           :documentation "Fuel Your Vocab: Places")
-   (source :path (session course source name)
-           :documentation "in what language are we learning")
-   (target :path (session course target name)
-           :documentation "what are we learning")
+   (source :path (session course source name) :initarg :source
+           :documentation "In what language are we learning")
+   (target :path (session course target name) :initarg :target
+           :documentation "What are we learning")
    (tasks :type (list-of memrise-session-task) :path boxes
-          :documentation "learning tasks")
+          :documentation "Learning tasks")
    (tests :path ((memrise/parse-session-tests screens))
-          :documentation "tests that are possible to be taken")
+          :documentation "All possible tests")
    (learnables :path ((memrise/parse-session-learnables learnables))
-               :documentation "actual things that can be learned")))
+               :documentation "Actual things that can be learned")))
 
 (jeison-defclass memrise-session-task nil
   ((learnable-id :path ((string-to-number learnable_id))
@@ -42,25 +42,27 @@
 
 (jeison-defclass memrise-session-test nil
   ;; we prefer kind to be a string not a symbol
-  ((kind :path template
+  ((kind :path template :initarg :kind
          :documentation "one of '(\"multiple_choice\"
 \"reversed_multiple_choice\"
 \"audio_multiple_choice\"
 \"typing\"
 \"tapping\")")
-   (prompt :type memrise-session-test-prompt
-           :documentation "information for a test title")
-   (answer :path (answer value)
-           :documentation "correct answer")
-   (choices :type (list-of t)
-            :documentation "other choices (do not include correct)")
-   (correct :type (list-of t) :path correct
-            :documentation "accepted answers")))
+   (prompt :type memrise-session-test-prompt :initarg :prompt
+           :documentation "Information for a test title")
+   (answer :path (answer value) :initarg :answer
+           :documentation "Correct answer")
+   (choices :type (list-of t) :initarg :choices
+            :documentation "Other choices (do not include correct)")
+   (correct :type (list-of t) :path correct :initarg :correct
+            :documentation "A list of accepted answers")))
 
 (jeison-defclass memrise-session-test-prompt nil
-  ((text :initform "" :path (text value) :documentation "Text to show")
+  ((text :initform "" :path (text value) :initarg :text
+         :documentation "Text to show")
    (audio :initform nil :path (audio (memrise/download-normal-pace-audio value))
-          :documentation "Audio to play (can be nil)")
-   (video :initform nil :documentation "Video to show (can be nil)")))
+          :initarg :audio :documentation "Audio to play (can be nil)")
+   (video :initform nil :initarg :video
+          :documentation "Video to show (can be nil)")))
 
 (provide 'memrise-session-objects)

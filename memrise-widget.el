@@ -5,12 +5,14 @@
 ;;; Code:
 
 (require 'memrise-utils)
+(require 'memrise-ui)
 (require 'memrise-request)
 (require 'widget)
 (require 'wid-edit)
 (require 'dash)
 (require 'all-the-icons)
 (require 'emms)
+(require 'rainbow-delimiters)
 
 (defcustom memrise/radio-keys '([?a] [?s] [?d] [?f] [?g] [?h] [?j] [?k] [?l] [?\;]
                                 [?z] [?x] [?c] [?v] [?b] [?n] [?m] [?,] [?.] [?/]

@@ -18,8 +18,10 @@
 (defun memrise/turn-off-completions ()
   "Turn off completion minor modes during session.
 Completion doesn't really help a learning process."
-  (company-mode -1)
-  (auto-complete-mode -1))
+  (when (fboundp 'company-mode)
+    (company-mode -1))
+  (when (fboundp 'auto-complete-mode)
+    (auto-complete-mode -1)))
 
 (defun memrise/session-buffer ()
   (get-buffer-create "*session*"))
@@ -40,9 +42,7 @@ Completion doesn't really help a learning process."
       (memrise/request-session
        course-id
        type
-       'memrise/start-session-internal)
-      ;;(memrise/start-session-internal swedish-learn)
-      )))
+       'memrise/start-session-internal))))
 
 (defun memrise/start-session-internal (json)
   (with-current-buffer (memrise/session-buffer)

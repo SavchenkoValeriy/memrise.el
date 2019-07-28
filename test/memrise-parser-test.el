@@ -1,4 +1,4 @@
-;;; memrise.el-test.el --- Tests for memrise.el -*- lexical-binding: t; -*-
+;;; memrise-parser-test.el --- Tests for memrise.el parsers -*- lexical-binding: t; -*-
 
 (require 'memrise-session-objects)
 (require 'memrise-session-parser)
@@ -54,7 +54,7 @@
     (should (string= (oref result audio)
                      (memrise:mocked "audio" "normal.mp3")))))
 
-(ert-deftest memrise:audio-multiple-choice-test ()
+(ert-deftest memrise:parse-audio-multiple-choice-test ()
   (cl-letf* ((json (memrise:test-load-json
                     "examples/audio_multiple_choice.json"))
              ((symbol-function 'memrise/download)
@@ -81,4 +81,4 @@
                              "12192.mp3"
                              "13606.mp3"))))))
 
-;;; memrise.el-test.el ends here
+;;; memrise-parser-test.el ends here
