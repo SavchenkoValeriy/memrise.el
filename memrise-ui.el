@@ -50,7 +50,8 @@
   "Return a default height of text."
   (let ((result (face-attribute 'default :height)))
     ;; default height is not specified (probably in tests)
-    (if (eq result 'unspecified)
+    (if (or (eq result 'unspecified)
+            (<= result 1))
         100
       result)))
 
