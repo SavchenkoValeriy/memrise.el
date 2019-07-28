@@ -9,6 +9,7 @@
 (require 'widget)
 (require 'wid-edit)
 (require 'dash)
+(require 'emms)
 
 (defcustom memrise/radio-keys '([?a] [?s] [?d] [?f] [?g] [?h] [?j] [?k] [?l] [?\;]
                                 [?z] [?x] [?c] [?v] [?b] [?n] [?m] [?,] [?.] [?/]
