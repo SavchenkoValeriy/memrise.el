@@ -1,0 +1,27 @@
+{
+  "text": {
+    "label": "English (US)",
+    "kind": "text",
+    "value": "the emergency",
+    "alternatives": [],
+    "style": [],
+    "direction": "source",
+    "markdown": false
+  },
+  "audio": {
+    "label": "Audio",
+    "kind": "audio",
+    "value": [
+      {
+        "normal": "normal.mp3",
+        "slow": "slow.mp3"
+      }
+    ],
+    "alternatives": [],
+    "style": [],
+    "direction": "target",
+    "markdown": false
+  },
+  "video": null,
+  "image": null
+}

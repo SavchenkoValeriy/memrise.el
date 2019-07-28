@@ -1,5 +1,7 @@
 ;;; memrise-session-objects.el --- Session structures -*- lexical-binding: t; -*-
 
+(require 'jeison)
+
 (jeison-defclass memrise-session nil
   ((course-name :path (session course name)
                 :documentation "Name of the course (e.g. Russian 2)")

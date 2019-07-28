@@ -3,7 +3,7 @@
 ;; Author: Valeriy Savchenko <sinmipt@gmail.com>
 ;; Maintainer: Valeriy Savchenko <sinmipt@gmail.com>
 ;; Version: 0.1.0
-;; Package-Requires: ((emacs "25.1") (request "0.3.0") (jeison "1.0.0") (s "1.12.0") (dash "2.16.0") (rainbow-delimiters "2.1.3") (all-the-icons "3.1.4"))
+;; Package-Requires: ((emacs "25.1") (request "0.3.0") (jeison "1.0.0") (s "1.12.0") (dash "2.16.0") (dash-functional "1.2.0") (rainbow-delimiters "2.1.3") (all-the-icons "3.1.4"))
 ;; Homepage: https://github.com/SavchenkoValeriy/memrise.el
 ;; Keywords: languages
 

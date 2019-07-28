@@ -1,45 +1,34 @@
 {
-  "audio_multiple_choice": {
-    "template": "audio_multiple_choice",
-    "prompt": "fake prompt",
+  "typing": {
+    "template": "typing",
+    "prompt": {},
     "answer": {
-      "label": "Audio",
-      "kind": "audio",
-      "value": [
-        {
-          "normal": "12475.mp3",
-          "slow": "stretched.mp3"
-        }
-      ],
+      "label": "German",
+      "kind": "text",
+      "value": "der Notfall",
       "alternatives": [],
       "style": [],
       "direction": "target",
       "markdown": false
     },
     "correct": [
-      "12475.mp3"
+      "der Notfall",
+      "der notfall"
     ],
     "choices": [
-      "13056.mp3",
-      "13699.mp3",
-      "13833.mp3",
-      "13195.mp3",
-      "12814.mp3",
-      "14296.mp3",
-      "13845.mp3",
-      "12822.mp3",
-      "12185.mp3",
-      "12698.mp3",
-      "12192.mp3",
-      "13606.mp3"
+      "ä",
+      "é",
+      "ö",
+      "ü",
+      "ß"
     ],
     "audio": {
       "label": "Audio",
       "kind": "audio",
       "value": [
         {
-          "normal": "12475.mp3",
-          "slow": "stretched.mp3"
+          "normal": "https://static.memrise.com/uploads/babylon/8/audios-v3/12475/1.mp3",
+          "slow": "https://static.memrise.com/uploads/stretched_audio/82d77f77-4943-49ae-b42e-80f7731f29eb-stretched.mp3"
         }
       ],
       "alternatives": [],

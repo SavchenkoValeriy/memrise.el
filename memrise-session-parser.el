@@ -30,6 +30,8 @@
 (require 'memrise-session-objects)
 (require 'memrise-media)
 
+(require 'cl)
+
 (defun memrise/parse-session (json)
   "Parse `JSON' and create a `memrise-session' object."
   (jeison-read memrise-session json))
