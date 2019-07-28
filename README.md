@@ -1,4 +1,4 @@
-# memrise.el
+# memrise.el [![Build Status](https://travis-ci.org/SavchenkoValeriy/memrise.el.svg?branch=master)](https://travis-ci.org/SavchenkoValeriy/memrise.el)
 
 ## Screenshots
 
