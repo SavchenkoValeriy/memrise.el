@@ -86,4 +86,48 @@
             (should (equal '("asd.mp3" "fgh.mp3" "jkl.mp3" "qwe.mp3")
                            (sort played-audios #'string-lessp))))))))
 
+(ert-deftest memrise:test-tapping-widget-test ()
+  (with-memrise-test-session
+      (cl-letf* ((prompt (memrise-session-test-prompt))
+                 (test (memrise-session-test
+                        :kind "tapping"
+                        :prompt prompt
+                        :answer "qwe rty"
+                        :choices '("asd" "fgh" "jkl" "zxc")
+                        :correct '(("qwe" "rty"))))
+                 ((symbol-function 'memrise/shuffle-list)
+                  (memrise:test-mock #'identity))
+                 (widget (memrise/tapping-widget test))
+                 ;; don't shuffle the list of choices
+                 (buffer-text (buffer-string)))
+        (widget-setup)
+        (should (memrise:contains-all
+                 buffer-text "qwe" "rty" "asd" "fgh" "jkl" "zxc"))
+        (with-mock
+          (memrise:mock-submit)
+          (memrise:press "a")
+          (should (equal (memrise--widget-get-answer widget)
+                         '("qwe")))
+          (memrise:press "f")
+          (should (equal (memrise--widget-get-answer widget)
+                         '("qwe" "fgh")))
+          (memrise:press "a")
+          (should (equal (memrise--widget-get-answer widget)
+                         '("qwe" "fgh" "qwe")))
+          (memrise:press "C-a C-d")
+          (should (equal (memrise--widget-get-answer widget)
+                         '("fgh" "qwe")))
+          (memrise:press "C-e <backspace>")
+          (should (equal (memrise--widget-get-answer widget)
+                         '("fgh")))
+          (memrise:press "a")
+          (should (equal (memrise--widget-get-answer widget)
+                         '("fgh" "qwe")))
+          (memrise:press "C-3 C-b s d")
+          (should (equal (memrise--widget-get-answer widget)
+                         '("fgh" "qwe" "rty" "asd")))
+          (should (equal "fgh qwe rty asd "
+                         (widget-value widget)))
+          (memrise:press "C-m")))))
+
 ;;; memrise-widget-test.el ends here

@@ -419,10 +419,10 @@ with a translation of a given word in a source language.
 
 (defun memrise--tapping-get-answer-internal (where)
   (goto-char where)
-  (when-let* ((tap-word (memrise/get-this-tap-word))
-              (end (overlay-end tap-word))
-              (word (buffer-substring-no-properties (overlay-start tap-word)
-                                                    (1- end))))
+  (-when-let* ((tap-word (memrise/get-this-tap-word))
+               (end (overlay-end tap-word))
+               (word (buffer-substring-no-properties (overlay-start tap-word)
+                                                     (1- end))))
     (cons word end)))
 
 (defun memrise/delete-next-tap-word ()
@@ -517,7 +517,7 @@ with a translation of a given word in a source language.
       (move-overlay next-tap-word end (overlay-end next-tap-word)))))
 
 (defun memrise/goto-next-tap-word ()
-  (when-let ((tap-word (memrise/get-this-or-next-tap-word)))
+  (-when-let (tap-word (memrise/get-this-or-next-tap-word))
     (goto-char (overlay-end tap-word))))
 
 (defun memrise/goto-field (field-widget)
