@@ -5,6 +5,7 @@
 ;;; Code:
 
 (require 'dash-functional)
+(require 'cl-lib)
 
 (defun memrise/make-argument-ignoring-lambda (func)
   "Return a version of the given `FUNC' that can take any number of arguments."
@@ -31,7 +32,7 @@ One can also provide `ARGS' for the `FUN'."
 
 (defun memrise/shuffle-list (list)
   "Shuffle the given `LIST'."
-  (sort (copy-list list) (lambda (a b) (eq (random 2) 1))))
+  (sort (cl-copy-list list) (lambda (a b) (eq (random 2) 1))))
 
 (defun memrise/vector-to-list (vector)
   "Convert `VECTOR' into a list."

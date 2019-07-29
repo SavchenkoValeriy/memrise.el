@@ -67,9 +67,9 @@ Completion doesn't really help a learning process."
   (memrise/display-tasks (oref session tasks)))
 
 (defun memrise/display-tasks (tasks)
-  (lexical-let* ((task (car tasks))
-                 (selected-learnable (assoc-default (oref task learnable-id)
-                                                    (oref session learnables))))
+  (let* ((task (car tasks))
+         (selected-learnable (assoc-default (oref task learnable-id)
+                                            (oref session learnables))))
     (setq learnable selected-learnable)
     (setq next-task (-partial 'memrise/display-next-task-internal tasks))
     (setq main-widget nil)

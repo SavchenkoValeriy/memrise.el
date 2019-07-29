@@ -30,8 +30,6 @@
 (require 'memrise-session-objects)
 (require 'memrise-media)
 
-(require 'cl)
-
 (defun memrise/parse-session (json)
   "Parse `JSON' and create a `memrise-session' object."
   (jeison-read memrise-session json))
@@ -66,10 +64,10 @@ Return path to the downloaded file."
 
 (defun memrise/parse-column-value (json label)
   "Find `LABEL' column in `JSON' and return its value."
-  (let ((column (find-if (lambda (x)
-                           (string= (assoc-default 'label x)
-                                    label))
-                         (assoc-default 'columns json))))
+  (let ((column (cl-find-if (lambda (x)
+                              (string= (assoc-default 'label x)
+                                       label))
+                            (assoc-default 'columns json))))
     (assoc-default 'value column)))
 
 ;; ===============================================================

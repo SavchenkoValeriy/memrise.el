@@ -1,6 +1,6 @@
 (require 'memrise-utils)
 (require 'request)
-(require 'cl)
+(require 'cl-lib)
 
 (defconst memrise/url "https://www.memrise.com")
 (defconst memrise/home-url "https://www.memrise.com/home/")
@@ -63,7 +63,7 @@
                          (message "Got error: %S" error-thrown)))))
 
 (defun memrise/request-dashboard (callback)
-  (lexical-let ((inner callback))
+  (let ((inner callback))
     (request
      memrise/dashboard-url
      :type "GET"
@@ -77,7 +77,7 @@
                                        inner)))))))
 
 (defun memrise/request-session (course-id type callback)
-  (lexical-let ((inner callback))
+  (let ((inner callback))
     (request
      memrise/session-url
      :type "GET"

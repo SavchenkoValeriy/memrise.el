@@ -22,7 +22,7 @@
 ;;;###autoload
 (defun memrise/dashboard ()
   (interactive)
-  (lexical-let ((buffer (memrise/dashboard-buffer)))
+  (let ((buffer (memrise/dashboard-buffer)))
     (memrise/request-dashboard
      (lambda (data)
        (with-current-buffer buffer

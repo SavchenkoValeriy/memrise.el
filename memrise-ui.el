@@ -1,5 +1,4 @@
-;;; memrise-ui.el --- memrise.el UI functions and utilities
-;;; -*- lexical-binding: t; -*-
+;;; memrise-ui.el --- memrise.el UI functions and utilities -*- lexical-binding: t; -*-
 
 ;;; Commentary:
 
@@ -8,14 +7,13 @@
 (require 's)
 
 (defun memrise/put-element-faces (elements faces)
-  (lexical-let ((faces faces))
-    (mapcar (lambda (pair)
-              (let ((key (car pair))
-                    (value (cdr pair)))
-                `(,key . ,(propertize
-                           (format "%s" value)
-                           'face (assoc-default key faces)))))
-            elements)))
+  (mapcar (lambda (pair)
+            (let ((key (car pair))
+                  (value (cdr pair)))
+              `(,key . ,(propertize
+                         (format "%s" value)
+                         'face (assoc-default key faces)))))
+          elements))
 
 (defun memrise/format-elements-with-faces (format elements faces)
   (let ((faced-elements (memrise/put-element-faces elements faces)))

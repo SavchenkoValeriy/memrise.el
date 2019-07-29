@@ -247,7 +247,7 @@ with a translation of a given word in a source language.
 
 (defun memrise/call-after-all-audio-is-finished (func &rest args)
   "Call `FUNC' with `ARGS' after all audio is over."
-  (lexical-let ((callback (-partial #'apply func args)))
+  (let ((callback (-partial #'apply func args)))
     (defun memrise/audio-hook ()
       (remove-hook 'emms-player-finished-hook
                    'memrise/audio-hook)
@@ -267,8 +267,7 @@ with a translation of a given word in a source language.
 
 (defun memrise/widget-run-hooks (hooks widget)
   "Run `HOOKS' with `WIDGET' as their argument."
-  (lexical-let ((arg widget))
-    (mapc (lambda (hook) (funcall hook arg)) hooks)))
+  (mapc (lambda (hook) (funcall hook widget)) hooks))
 
 (defun memrise/typing-widget (test)
   "Create typing `TEST'."
@@ -306,13 +305,13 @@ with a translation of a given word in a source language.
 
 (defun memrise/text-input-widget-create (widget)
   "Create a memrise/text-input-widget from `WIDGET'."
-  (lexical-let* ((test           (widget-get widget :test))
-                 (prefix-format  (widget-get widget :prefix-format))
-                 (assign-keys    (widget-get widget :assign-keys))
-                 (submit         (widget-get widget :submit))
-                 (instant-submit (widget-get widget :instant-submit))
-                 (input-method   (widget-get widget :input-method))
-                 (text           (memrise/format-widget prefix-format test)))
+  (let* ((test           (widget-get widget :test))
+         (prefix-format  (widget-get widget :prefix-format))
+         (assign-keys    (widget-get widget :assign-keys))
+         (submit         (widget-get widget :submit))
+         (instant-submit (widget-get widget :instant-submit))
+         (input-method   (widget-get widget :input-method))
+         (text           (memrise/format-widget prefix-format test)))
     (widget-put widget :format (concat text "%v"))
     (widget-put widget :keymap nil)
     (when instant-submit
@@ -331,17 +330,17 @@ with a translation of a given word in a source language.
     (goto-char (widget-field-start widget))))
 
 (defun memrise/setup-default-input-mode (widget)
-  (lexical-let* ((hint (widget-create
-                        'item
-                        :format (format "Press %s to turn input mode on/off:\n"
-                                        (memrise/get-pretty-binding
-                                         memrise/input-mode-key))))
-                 (test (widget-get widget :test))
-                 (buttons (memrise/create-pick-buttons
-                           (oref test choices)
-                           widget
-                           memrise/input-mode-map
-                           t)))
+  (let* ((hint (widget-create
+                'item
+                :format (format "Press %s to turn input mode on/off:\n"
+                                (memrise/get-pretty-binding
+                                 memrise/input-mode-key))))
+         (test (widget-get widget :test))
+         (buttons (memrise/create-pick-buttons
+                   (oref test choices)
+                   widget
+                   memrise/input-mode-map
+                   t)))
     (widget-put widget :buttons (cons hint buttons))
     (local-set-key memrise/input-mode-key
                    (memrise/make-interactive (-partial
@@ -385,12 +384,12 @@ with a translation of a given word in a source language.
 
 (defun memrise/tapping-widget-create (widget)
   "Create a memrise/tapping-widget from `WIDGET'."
-  (lexical-let* ((test           (widget-get widget :test))
-                 (prefix-format  (widget-get widget :prefix-format))
-                 (assign-keys    (widget-get widget :assign-keys))
-                 (submit         (widget-get widget :submit))
-                 (instant-submit (widget-get widget :instant-submit))
-                 (text           (memrise/format-widget prefix-format test)))
+  (let* ((test           (widget-get widget :test))
+         (prefix-format  (widget-get widget :prefix-format))
+         (assign-keys    (widget-get widget :assign-keys))
+         (submit         (widget-get widget :submit))
+         (instant-submit (widget-get widget :instant-submit))
+         (text           (memrise/format-widget prefix-format test)))
     (suppress-keymap (current-local-map) t)
     (widget-put widget :format (concat text "%v"))
     (widget-put widget :keymap nil)
@@ -466,17 +465,17 @@ with a translation of a given word in a source language.
         (memrise/find-tap-word-internal (cdr overlays))))))
 
 (defun memrise/setup-tapping-choices (widget)
-  (lexical-let* ((min     (widget-get widget :min))
-                 (max     (widget-get widget :max))
-                 (test    (widget-get widget :test))
-                 (choices (memrise/construct-choices
-                           ;; correct is always a list
-                           (car (oref test correct))
-                           (oref test choices)
-                           max min))
-                 (buttons (memrise/create-pick-buttons
-                           choices widget nil nil
-                           '(:action memrise/pick-button-insert-complex-value))))
+  (let* ((min     (widget-get widget :min))
+         (max     (widget-get widget :max))
+         (test    (widget-get widget :test))
+         (choices (memrise/construct-choices
+                   ;; correct is always a list
+                   (car (oref test correct))
+                   (oref test choices)
+                   max min))
+         (buttons (memrise/create-pick-buttons
+                   choices widget nil nil
+                   '(:action memrise/pick-button-insert-complex-value))))
     (widget-put widget :buttons buttons)))
 
 (defun memrise/deactivate-widgets (widgets)
@@ -637,17 +636,16 @@ Optional `KEYMAP' parameter is defaulted to current keymap."
 (defun memrise/assign-button-keybinding (keymap button keybinding index)
   "For the given `KEYMAP' change radio `BUTTON' shape and `KEYBINDING',
 colors it with a rainbow color `INDEX'."
-  (lexical-let ((button button))
-    (widget-put button
-                :button-prefix
-                (propertize (format "[%s] "
-                                    (key-description keybinding))
-                            'face
-                            (rainbow-delimiters-default-pick-face index t nil)))
-    ;;to show the new button shape, we need to redraw it
-    (memrise/redraw-widget button)
-    (define-key keymap keybinding
-      (lambda () (interactive) (widget-apply-action button)))))
+  (widget-put button
+              :button-prefix
+              (propertize (format "[%s] "
+                                  (key-description keybinding))
+                          'face
+                          (rainbow-delimiters-default-pick-face index t nil)))
+  ;;to show the new button shape, we need to redraw it
+  (memrise/redraw-widget button)
+  (define-key keymap keybinding
+    (lambda () (interactive) (widget-apply-action button))))
 
 (defun memrise/assign-labels (labels items)
   "Show `LABELS' instead of `ITEMS'' values."
