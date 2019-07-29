@@ -221,7 +221,8 @@ with a translation of a given word in a source language.
          (oref session course-id)
          (oref test kind)
          given
-         (memrise--get-number-of-points test)
+         ;; assign points only for answering correctly
+         (if correct? (memrise--get-number-of-points test) 0)
          ;; TODO: time the test for real
          5000)
         (memrise/widget-run-hooks (widget-get widget :on-submit-hook) widget)
