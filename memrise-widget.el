@@ -226,11 +226,15 @@ with a translation of a given word in a source language.
          ;; TODO: time the test for real
          5000)
         (memrise/widget-run-hooks (widget-get widget :on-submit-hook) widget)
-        (run-at-time "0.5 sec"
-                     nil
-                     #'memrise/call-after-all-audio-is-finished
-                     #'memrise/display-next-task
-                     widget)))))
+        (memrise--proceed-to-the-next-test widget)))))
+
+(defun memrise--proceed-to-the-next-test (widget)
+  "Finish up with `WIDGET' and proceed with the next test widget."
+  (run-at-time "0.5 sec"
+               nil
+               #'memrise/call-after-all-audio-is-finished
+               #'memrise/display-next-task
+               widget))
 
 (defun memrise--get-number-of-points (test)
   ;; TODO: calculate the number of points based on the current session and test
