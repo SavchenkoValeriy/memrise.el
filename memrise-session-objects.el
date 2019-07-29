@@ -5,7 +5,7 @@
 (jeison-defclass memrise-session nil
   ((course-name :path (session course name)
                 :documentation "Name of the course (e.g. Russian 2)")
-   (course-id :path (session course_id)
+   (course-id :path (session course_id) :initarg :course-id
               :documentation "Internal ID of the course")
    (title :path (session level title) :initarg :title
           :documentation "Fuel Your Vocab: Places")

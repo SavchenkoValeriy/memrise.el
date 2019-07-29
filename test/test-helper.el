@@ -27,12 +27,19 @@
        (make-local-variable 'learnable)
        (setq session (memrise-session :title "Test course"
                                       :source "A"
-                                      :target "B"))
+                                      :target "B"
+                                      :course-id 42))
        (setq learnable (memrise-session-learnable))
-       ,@body)))
+       (switch-to-buffer (memrise/session-buffer))
+       ,@body
+       (kill-buffer (memrise/session-buffer)))))
 
 (defun memrise:contains-all (text &rest needles)
   "Return true if all `NEEDLES' are in the `TEXT'."
   (--every-p (s-contains-p it text) needles))
+
+(defun memrise:press (key)
+  "Simulate pressing `KEY'."
+  (execute-kbd-macro (read-kbd-macro key)))
 
 ;;; test-helper.el ends here
