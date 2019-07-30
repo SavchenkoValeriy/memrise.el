@@ -1,3 +1,5 @@
+;;; memrise-request.el --- Memrise requests -*- lexical-binding: t; -*-
+
 (require 'memrise-utils)
 (require 'request)
 (require 'cl-lib)
@@ -123,3 +125,4 @@
     (json-read)))
 
 (provide 'memrise-request)
+;;; memrise-request.el ends here

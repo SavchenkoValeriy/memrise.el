@@ -9,7 +9,7 @@
       (if (boundp 'ert-runner-test-path)
           ert-runner-test-path
         default-directory)))
-    (json-read-from-string (buffer-string))))
+    (memrise--json-read)))
 
 (defun memrise:test-mock (&optional fake-fun)
   "Return a mocking function.

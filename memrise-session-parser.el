@@ -29,6 +29,7 @@
 
 (require 'memrise-session-objects)
 (require 'memrise-media)
+(require 'memrise-utils)
 
 (defun memrise-parse-session (json)
   "Parse `JSON' and create a `memrise-session' object."
@@ -47,16 +48,11 @@ as value."
 
 (defun memrise-parse-session-learnable (json)
   "Parse `memrise-session-learnable' from `JSON'."
-  (let* ((result (jeison-read memrise-session-learnable json)))
-    (cons (oref result id) result)))
-
-(defun memrise-parse-session-learnable-audio (json)
-  "Find a URL for the audio in `JSON' and download it.
-
-Return path to the downloaded file."
-  (memrise-process-media
-   "audio"
-   (memrise-parse-column-value json "Audio")))
+  (-let* (((id (_ . body)) json)
+          (id (memrise--integer-for-id id))
+          (learnable (jeison-read memrise-session-learnable body)))
+    (oset learnable id id)
+    (cons id learnable)))
 
 (defun memrise-parse-session-learnable-literal-translation (json)
   "Find and return literal translation from `JSON'."
@@ -67,7 +63,7 @@ Return path to the downloaded file."
   (let ((column (cl-find-if (lambda (x)
                               (string= (assoc-default 'label x)
                                        label))
-                            (assoc-default 'columns json))))
+                            json)))
     (assoc-default 'value column)))
 
 ;; ===============================================================
@@ -82,7 +78,7 @@ Result alist has learnable ID as a key and a list of tests as value."
 
 (defun memrise-parse-session-learnable-tests (json)
   "Parse `JSON' and produce a pair: learnable ID and a list of tests."
-  (let* ((id (string-to-number (symbol-name (car json))))
+  (let* ((id (memrise--integer-for-id (car json)))
          (body (cdr (cdr json)))
          (tests (mapcar #'memrise-parse-session-test body)))
     (cons id tests)))

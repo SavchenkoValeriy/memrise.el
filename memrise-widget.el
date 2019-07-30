@@ -84,7 +84,7 @@
   :learnable nil
   :prefix-format memrise-presentation-format
   :requires-audio 'before
-  :get-audio #'memrise-get-audio-from-test
+  :get-audio #'memrise-get-audio-from-learnable
   :create #'memrise-presentation-widget-create
   )
 
@@ -264,6 +264,11 @@ with a translation of a given word in a source language.
       ;; use emms callbacks to call it after player has finished
       (add-hook 'emms-player-finished-hook
                 'memrise-audio-hook))))
+
+(defun memrise-get-audio-from-learnable (widget)
+  "Extracts audio file from `WIDGET's learnable."
+  (let ((learnable (widget-get widget :learnable)))
+    (oref learnable audio)))
 
 (defun memrise-get-audio-from-test (widget)
   "Extracts audio file from `WIDGET's test."

@@ -38,11 +38,11 @@ One can also provide `ARGS' for the `FUN'."
   "Convert `VECTOR' into a list."
   (append vector nil))
 
-(defun memrise-integer-for-id (symbol)
+(defun memrise--integer-for-id (symbol)
   "Convert `SYMBOL' representing an ID into an integer."
   (string-to-number (symbol-name symbol)))
 
-(defun memrise-id-for-integer (integer)
+(defun memrise--id-for-integer (integer)
   "Convert `INTEGER' representing an ID into a symbol."
   (intern (number-to-string integer)))
 

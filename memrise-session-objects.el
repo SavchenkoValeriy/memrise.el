@@ -17,7 +17,7 @@
           :documentation "Learning tasks")
    (tests :path ((memrise-parse-session-tests screens))
           :documentation "All possible tests")
-   (learnables :path ((memrise-parse-session-learnables learnables))
+   (learnables :path ((memrise-parse-session-learnables screens))
                :documentation "Actual things that can be learned")))
 
 (jeison-defclass memrise-session-task nil
@@ -28,17 +28,17 @@
                 :documentation "learn level (nil or 1-6)")))
 
 (jeison-defclass memrise-session-learnable nil
-  ((id :type number :path ((string-to-number learnable_id))
-       :documentation "a unique ID to identify the thing")
-   (text :initform "" :path (item value) :documentation "text representation")
+  ((id :documentation "a unique ID to identify the thing")
+   (text :initform "" :path (item value)
+         :documentation "Text representation of a learnable object")
    (translation :initform "" :path (definition value)
-                :documentation "translation of a text representation")
-   (audio :path ((memrise-parse-session-learnable-audio nil))
-          :documentation "audio representation")
+                :documentation "Translation of a learnable object")
+   (audio :path ((memrise-download-normal-pace-audio (audio value)))
+          :documentation "Audio representation")
    (literal-translation
     :initform nil
-    :path ((memrise-parse-session-learnable-literal-translation nil))
-    :documentation "can be nil")))
+    :path ((memrise-parse-session-learnable-literal-translation visible_info))
+    :documentation "Literal translation (can be nil)")))
 
 (jeison-defclass memrise-session-test nil
   ;; we prefer kind to be a string not a symbol
@@ -66,3 +66,4 @@
           :documentation "Video to show (can be nil)")))
 
 (provide 'memrise-session-objects)
+;;; memrise-session-objects.el ends here
