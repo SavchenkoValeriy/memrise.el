@@ -15,7 +15,7 @@
                     :answer "qwe"
                     :choices '("asd" "fgh" "jkl")
                     :correct '("qwe")))
-             (widget (memrise/multiple-choice-widget test 4))
+             (widget (memrise-multiple-choice-widget test 4))
              (buffer-text (buffer-string)))
         (widget-setup)
         (should (memrise:contains-all buffer-text "asd" "fgh" "jkl" "qwe"))
@@ -26,7 +26,7 @@
 (ert-deftest memrise:test-reversed-multi-choice-widget ()
   (with-memrise-test-session
       (with-mock
-        (mock (memrise/play-audio "qwe.mp3") :times 1)
+        (mock (memrise-play-audio "qwe.mp3") :times 1)
         (memrise:mock-submit)
         (let* ((prompt (memrise-session-test-prompt :audio "qwe.mp3"))
                (test (memrise-session-test
@@ -35,7 +35,7 @@
                       :answer "qwe"
                       :choices '("asd" "fgh" "jkl")
                       :correct '("qwe")))
-               (widget (memrise/reversed-multiple-choice-widget test 4))
+               (widget (memrise-reversed-multiple-choice-widget test 4))
                (buffer-text (buffer-string)))
           (widget-setup)
           (should (memrise:contains-all buffer-text "asd" "fgh" "jkl" "qwe"))
@@ -50,7 +50,7 @@
                     :answer "qwe"
                     :choices '("☀" "☁" "☂")
                     :correct '("qwe")))
-             (widget (memrise/typing-widget test))
+             (widget (memrise-typing-widget test))
              (buffer-text (buffer-string)))
         (widget-setup)
         (should (memrise:contains-all buffer-text "☀" "☁" "☂"))
@@ -71,13 +71,13 @@
                     :answer "qwe.mp3"
                     :choices '("asd.mp3" "fgh.mp3" "jkl.mp3")
                     :correct '("qwe.mp3")))
-             (widget (memrise/audio-multiple-choice-widget test 4))
+             (widget (memrise-audio-multiple-choice-widget test 4))
              (buffer-text (substring-no-properties (buffer-string))))
         (widget-setup)
         (should (not (memrise:contains-any
                       buffer-text "qwe.mp3" "asd.mp3" "fgh.mp3" "jkl.mp3")))
         (cl-letf* ((played-audios nil)
-                   ((symbol-function 'memrise/play-audio)
+                   ((symbol-function 'memrise-play-audio)
                     (memrise:test-mock
                      (lambda (audio) (add-to-list 'played-audios audio)))))
           (with-mock
@@ -95,9 +95,9 @@
                         :answer "qwe rty"
                         :choices '("asd" "fgh" "jkl" "zxc")
                         :correct '(("qwe" "rty"))))
-                 ((symbol-function 'memrise/shuffle-list)
+                 ((symbol-function 'memrise-shuffle-list)
                   (memrise:test-mock #'identity))
-                 (widget (memrise/tapping-widget test))
+                 (widget (memrise-tapping-widget test))
                  ;; don't shuffle the list of choices
                  (buffer-text (buffer-string)))
         (widget-setup)

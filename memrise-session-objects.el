@@ -15,9 +15,9 @@
            :documentation "What are we learning")
    (tasks :type (list-of memrise-session-task) :path boxes
           :documentation "Learning tasks")
-   (tests :path ((memrise/parse-session-tests screens))
+   (tests :path ((memrise-parse-session-tests screens))
           :documentation "All possible tests")
-   (learnables :path ((memrise/parse-session-learnables learnables))
+   (learnables :path ((memrise-parse-session-learnables learnables))
                :documentation "Actual things that can be learned")))
 
 (jeison-defclass memrise-session-task nil
@@ -33,11 +33,11 @@
    (text :initform "" :path (item value) :documentation "text representation")
    (translation :initform "" :path (definition value)
                 :documentation "translation of a text representation")
-   (audio :path ((memrise/parse-session-learnable-audio nil))
+   (audio :path ((memrise-parse-session-learnable-audio nil))
           :documentation "audio representation")
    (literal-translation
     :initform nil
-    :path ((memrise/parse-session-learnable-literal-translation nil))
+    :path ((memrise-parse-session-learnable-literal-translation nil))
     :documentation "can be nil")))
 
 (jeison-defclass memrise-session-test nil
@@ -60,7 +60,7 @@
 (jeison-defclass memrise-session-test-prompt nil
   ((text :initform "" :path (text value) :initarg :text
          :documentation "Text to show")
-   (audio :initform nil :path (audio (memrise/download-normal-pace-audio value))
+   (audio :initform nil :path (audio (memrise-download-normal-pace-audio value))
           :initarg :audio :documentation "Audio to play (can be nil)")
    (video :initform nil :initarg :video
           :documentation "Video to show (can be nil)")))

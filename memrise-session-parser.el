@@ -30,7 +30,7 @@
 (require 'memrise-session-objects)
 (require 'memrise-media)
 
-(defun memrise/parse-session (json)
+(defun memrise-parse-session (json)
   "Parse `JSON' and create a `memrise-session' object."
   (jeison-read memrise-session json))
 
@@ -38,31 +38,31 @@
 ;; Learnable parsers
 ;; ===============================================================
 
-(defun memrise/parse-session-learnables (json)
+(defun memrise-parse-session-learnables (json)
   "Parse a alist of learnables objects from `JSON'.
 
 Result alist has learnable ID as a key and `memrise-session-learnable'
 as value."
-  (mapcar 'memrise/parse-session-learnable json))
+  (mapcar 'memrise-parse-session-learnable json))
 
-(defun memrise/parse-session-learnable (json)
+(defun memrise-parse-session-learnable (json)
   "Parse `memrise-session-learnable' from `JSON'."
   (let* ((result (jeison-read memrise-session-learnable json)))
     (cons (oref result id) result)))
 
-(defun memrise/parse-session-learnable-audio (json)
+(defun memrise-parse-session-learnable-audio (json)
   "Find a URL for the audio in `JSON' and download it.
 
 Return path to the downloaded file."
-  (memrise/process-media
+  (memrise-process-media
    "audio"
-   (memrise/parse-column-value json "Audio")))
+   (memrise-parse-column-value json "Audio")))
 
-(defun memrise/parse-session-learnable-literal-translation (json)
+(defun memrise-parse-session-learnable-literal-translation (json)
   "Find and return literal translation from `JSON'."
-  (memrise/parse-column-value json "Literal translation"))
+  (memrise-parse-column-value json "Literal translation"))
 
-(defun memrise/parse-column-value (json label)
+(defun memrise-parse-column-value (json label)
   "Find `LABEL' column in `JSON' and return its value."
   (let ((column (cl-find-if (lambda (x)
                               (string= (assoc-default 'label x)
@@ -74,43 +74,43 @@ Return path to the downloaded file."
 ;; Test parsers
 ;; ===============================================================
 
-(defun memrise/parse-session-tests (json)
+(defun memrise-parse-session-tests (json)
   "Parse `JSON' and produce an alist of Memrise tests.
 
 Result alist has learnable ID as a key and a list of tests as value."
-  (mapcar 'memrise/parse-session-learnable-tests json))
+  (mapcar 'memrise-parse-session-learnable-tests json))
 
-(defun memrise/parse-session-learnable-tests (json)
+(defun memrise-parse-session-learnable-tests (json)
   "Parse `JSON' and produce a pair: learnable ID and a list of tests."
   (let* ((id (string-to-number (symbol-name (car json))))
          (body (cdr (cdr json)))
-         (tests (mapcar #'memrise/parse-session-test body)))
+         (tests (mapcar #'memrise-parse-session-test body)))
     (cons id tests)))
 
-(defun memrise/parse-session-test (json)
+(defun memrise-parse-session-test (json)
   "Parse `JSON' and return a pair: kind and a `memrise-session-test' object."
   (let* ((result (jeison-read memrise-session-test json))
          (kind (oref result kind)))
     ;; if test is an audio test we should download all audios
     (when (s-contains? "audio" kind)
       ;; for the answer
-      (oset result answer (memrise/download-normal-pace-audio
+      (oset result answer (memrise-download-normal-pace-audio
                            (oref result answer)))
       ;; for the correct choices
-      (oset result correct (memrise/process-media "audio"
+      (oset result correct (memrise-process-media "audio"
                                                   (oref result correct)))
       ;; and for other choices
-      (oset result choices (memrise/process-media "audio"
+      (oset result choices (memrise-process-media "audio"
                                                   (oref result choices))))
     (cons kind result)))
 
-(defun memrise/download-normal-pace-audio (json)
+(defun memrise-download-normal-pace-audio (json)
   "Parse `JSON' find a normal pace audio and download it.
 
 Return a path to the downloaded file."
   (let ((audio (jeison-read t json '(0 normal))))
     (when audio
-      (memrise/process-media "audio" audio))))
+      (memrise-process-media "audio" audio))))
 
 (provide 'memrise-session-parser)
 ;;; memrise-session-parser.el ends here

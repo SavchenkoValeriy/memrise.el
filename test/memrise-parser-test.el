@@ -5,7 +5,7 @@
 
 (ert-deftest memrise:parse-learnable-test ()
   (let* ((json (memrise:test-load-json "examples/learnable.json"))
-         (result (cdr (memrise/parse-session-learnable json))))
+         (result (cdr (memrise-parse-session-learnable json))))
     (should (= (oref result id)
                65550801240322))
     (should (string= (oref result text)
@@ -34,7 +34,7 @@
 
 (ert-deftest memrise:parse-session-test-typing ()
   (cl-letf* ((json (memrise:test-load-json "examples/test_typing.json"))
-             (result (cdr (memrise/parse-session-test (car json)))))
+             (result (cdr (memrise-parse-session-test (car json)))))
     (should (string= (oref result kind)
                      "typing"))
     (should (string= (oref result answer)
@@ -46,7 +46,7 @@
 
 (ert-deftest memrise:parse-session-test-prompt-test ()
   (cl-letf* ((json (memrise:test-load-json "examples/test_prompt.json"))
-             ((symbol-function 'memrise/process-media)
+             ((symbol-function 'memrise-process-media)
               (memrise:test-mock))
              (result (jeison-read memrise-session-test-prompt json)))
     (should (string= (oref result text)
@@ -57,9 +57,9 @@
 (ert-deftest memrise:parse-audio-multiple-choice-test ()
   (cl-letf* ((json (memrise:test-load-json
                     "examples/audio_multiple_choice.json"))
-             ((symbol-function 'memrise/download)
+             ((symbol-function 'memrise-download)
               (memrise:test-mock))
-             (result (cdr (memrise/parse-session-test (car json)))))
+             (result (cdr (memrise-parse-session-test (car json)))))
     (should (string= (oref result kind)
                      "audio_multiple_choice"))
     (should (equal (oref result correct)

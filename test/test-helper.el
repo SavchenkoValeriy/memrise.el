@@ -24,7 +24,7 @@ It would use `FAKE-FUN' if given and `memrise:mocked otherwise'."
 (defmacro with-memrise-test-session (&rest body)
   "Start, switch to a test Memrise session and execute `BODY'."
   (declare (indent 1) (debug t))
-  `(with-current-buffer (memrise/session-buffer)
+  `(with-current-buffer (memrise-session-buffer)
      (let ((inhibit-read-only t))
        (kill-all-local-variables)
        (erase-buffer)
@@ -36,9 +36,9 @@ It would use `FAKE-FUN' if given and `memrise:mocked otherwise'."
                                       :target "B"
                                       :course-id 42))
        (setq learnable (memrise-session-learnable))
-       (switch-to-buffer (memrise/session-buffer))
+       (switch-to-buffer (memrise-session-buffer))
        ,@body
-       (kill-buffer (memrise/session-buffer)))))
+       (kill-buffer (memrise-session-buffer)))))
 
 (defun memrise:contains-all (text &rest needles)
   "Return true if all `NEEDLES' are in the `TEXT'."
@@ -56,7 +56,7 @@ It would use `FAKE-FUN' if given and `memrise:mocked otherwise'."
   "Mock widget submit functions."
   `(progn
      (mock (memrise--request-send-answer * * * * * *) :times 1)
-     (mock (memrise/widget-run-hooks * *) :times 1)
+     (mock (memrise-widget-run-hooks * *) :times 1)
      (mock (memrise--proceed-to-the-next-test *) :times 1)))
 
 ;;; test-helper.el ends here
