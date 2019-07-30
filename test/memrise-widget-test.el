@@ -126,8 +126,11 @@
           (memrise:press "C-3 C-b s d")
           (should (equal (memrise--widget-get-answer widget)
                          '("fgh" "qwe" "rty" "asd")))
-          (should (equal "fgh qwe rty asd "
-                         (widget-value widget)))
+          (should (equal (widget-value widget)
+                         "fgh qwe rty asd "))
+          (memrise:press "M-b M-b f")
+          (should (equal (memrise--widget-get-answer widget)
+                         '("fgh" "qwe" "fgh" "rty" "asd")))
           (memrise:press "C-m")))))
 
 ;;; memrise-widget-test.el ends here

@@ -502,10 +502,10 @@ with a translation of a given word in a source language.
 
 (defun memrise/pick-button-insert-complex-value (widget &optional _event)
   (let* ((parent (widget-get widget :parent))
-         (next-tap-word (memrise/get-next-tap-word))
          (start (or (memrise/goto-field parent)
                     (memrise/goto-next-tap-word)
                     (point)))
+         (next-tap-word (memrise/get-this-or-next-tap-word))
          end
          overlay)
     (memrise/pick-button-insert-value widget)
@@ -518,7 +518,8 @@ with a translation of a given word in a source language.
 
 (defun memrise/goto-next-tap-word ()
   (-when-let (tap-word (memrise/get-this-or-next-tap-word))
-    (goto-char (overlay-end tap-word))))
+    (unless (= (point) (overlay-start tap-word))
+      (goto-char (overlay-end tap-word)))))
 
 (defun memrise/goto-field (field-widget)
   "Goto editable field of `FIELD_WIDGET' if not there."
