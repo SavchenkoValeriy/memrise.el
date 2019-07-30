@@ -557,7 +557,18 @@ Provided `WIDGET' should have the following properties:
 
 (defun memrise/play-audio (audio)
   "Play the given `AUDIO' file."
-  (emms-play-file audio))
+  ;; 1. turning off `emms-info-asynchronously' seems like the only way
+  ;;    to get rid of the "EMMS: All track information loaded." message
+  ;; 2. EMMS tries to play next song and prints "No next track in playlist".
+  ;;    Setting 'emms-single-track' or using 'emms-toggle-single-track'
+  ;;    seems like a good solution, but for some reason doesn't work.
+  ;;    As the result, we temporarily refuse EMMS from even trying to play
+  ;;    the next track.
+  ;;    The worst part is that is still prints "No next track in playlist"
+  ;;    sometimes.
+  (let ((emms-info-asynchronously nil)
+        (emms-player-next-function #'ignore))
+    (emms-play-file audio)))
 
 (defun memrise/format-widget (format test-or-learnable)
   "Apply `FORMAT' to the given `TEST-OR-LEARNABLE'."
