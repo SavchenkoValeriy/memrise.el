@@ -202,7 +202,7 @@ with a translation of a given word in a source language.
 (defun memrise-choice-widget-submit-answer (widget)
   "Read the value of `WIDGET' and submit it as the answer."
   (let* ((test (widget-get widget :test))
-         (answer (oref test answer))
+         (answer (oref learnable text))
          (given (memrise--widget-get-answer widget)))
     (if (not given)
         (message "Please, give an answer first!")
