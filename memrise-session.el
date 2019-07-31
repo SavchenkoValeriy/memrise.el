@@ -115,10 +115,9 @@ Completion doesn't really help a learning process."
   (let ((tests (seq-filter
                 (lambda (test) (-contains-p memrise-supported-tests (car test)))
                 tests)))
-    (or (assoc-default "tapping" tests)
-        (if (eq level 1)
-            (assoc-default "multiple_choice" tests)
-          (cdr (memrise-random-element tests))))))
+    (if (eq level 1)
+        (assoc-default "multiple_choice" tests)
+      (cdr (memrise-random-element tests)))))
 
 (defun memrise-display-test (test number)
   (pcase (oref test kind)
