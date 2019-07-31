@@ -103,11 +103,11 @@ Completion doesn't really help a learning process."
 
 (defun memrise-decide-number-of-choices (level)
   (memrise-icase level
-    `((1 . 2) ,memrise-minimal-number-of-choices)
-    `((3 . 4) ,memrise-average-number-of-choices)
-    `((5 . 6) ,memrise-maximal-number-of-choices)
-    ;; words for review have `level' == `nil'
-    `(nil     ,memrise-maximal-number-of-choices)))
+                 `((0 . 2) ,memrise-minimal-number-of-choices)
+                 `((3 . 4) ,memrise-average-number-of-choices)
+                 `((5 . 6) ,memrise-maximal-number-of-choices)
+                 ;; words for review have `level' == `nil'
+                 `(nil     ,memrise-maximal-number-of-choices)))
 
 (defun memrise-pick-test (tests level)
   "According to the given `level' picks one of the `tests'"
