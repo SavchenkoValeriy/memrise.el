@@ -160,8 +160,7 @@ with a translation of a given word in a source language.
   :submit 'memrise-choice-widget-submit-answer
   :on-submit-hook nil
   :instant-submit t
-  :labels '()
-  )
+  :labels '())
 
 (defun memrise-choice-widget-create (widget)
   "Create a memrise-choice-widget from `WIDGET'."
@@ -597,14 +596,14 @@ Provided `WIDGET' should have the following properties:
 `MINIMAL' - minimal number of incorrect choices."
   (unless minimal
     (setq minimal 0))
-  (let* ((concat (if (listp correct) 'append 'cons))
-         (correct-size (if (listp correct)
-                           (length correct)
-                         1))
+  (let* ((correct (if (listp correct) correct (list correct)))
+         (correct-size (length correct))
          (incorrect-size (max (- number correct-size) minimal))
+         ;; we want to include only non-repeating options that are not correct
+         (incorrect-efficient (-distinct (-difference incorrect correct)))
          (filtered-incorrect
-          (memrise-random-sublist incorrect incorrect-size)))
-    (memrise-shuffle-list (funcall concat correct filtered-incorrect))))
+          (memrise-random-sublist incorrect-efficient incorrect-size)))
+    (memrise-shuffle-list (append correct filtered-incorrect))))
 
 (defun memrise-session-format (test-or-learnable)
   "Return an alist to use for widget formating.

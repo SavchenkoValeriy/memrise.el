@@ -88,49 +88,73 @@
 
 (ert-deftest memrise:test-tapping-widget-test ()
   (with-memrise-test-session
-      (cl-letf* ((prompt (memrise-session-test-prompt))
-                 (test (memrise-session-test
-                        :kind "tapping"
-                        :prompt prompt
-                        :answer "qwe rty"
-                        :choices '("asd" "fgh" "jkl" "zxc")
-                        :correct '(("qwe" "rty"))))
-                 ((symbol-function 'memrise-shuffle-list)
-                  (memrise:test-mock #'identity))
-                 (widget (memrise-tapping-widget test))
-                 ;; don't shuffle the list of choices
-                 (buffer-text (buffer-string)))
-        (widget-setup)
-        (should (memrise:contains-all
-                 buffer-text "qwe" "rty" "asd" "fgh" "jkl" "zxc"))
-        (with-mock
-          (memrise:mock-submit)
-          (memrise:press "a")
-          (should (equal (memrise--widget-get-answer widget)
-                         '("qwe")))
-          (memrise:press "f")
-          (should (equal (memrise--widget-get-answer widget)
-                         '("qwe" "fgh")))
-          (memrise:press "a")
-          (should (equal (memrise--widget-get-answer widget)
-                         '("qwe" "fgh" "qwe")))
-          (memrise:press "C-a C-d")
-          (should (equal (memrise--widget-get-answer widget)
-                         '("fgh" "qwe")))
-          (memrise:press "C-e <backspace>")
-          (should (equal (memrise--widget-get-answer widget)
-                         '("fgh")))
-          (memrise:press "a")
-          (should (equal (memrise--widget-get-answer widget)
-                         '("fgh" "qwe")))
-          (memrise:press "C-3 C-b s d")
-          (should (equal (memrise--widget-get-answer widget)
-                         '("fgh" "qwe" "rty" "asd")))
-          (should (equal (widget-value widget)
-                         "fgh qwe rty asd "))
-          (memrise:press "M-b M-b f")
-          (should (equal (memrise--widget-get-answer widget)
-                         '("fgh" "qwe" "fgh" "rty" "asd")))
-          (memrise:press "C-m")))))
+   (cl-letf* ((prompt (memrise-session-test-prompt))
+              (test (memrise-session-test
+                     :kind "tapping"
+                     :prompt prompt
+                     :answer "qwe rty"
+                     :choices '("asd" "fgh" "jkl" "zxc")
+                     :correct '(("qwe" "rty"))))
+              ((symbol-function 'memrise-shuffle-list)
+               (memrise:test-mock #'identity))
+              (widget (memrise-tapping-widget test))
+              ;; don't shuffle the list of choices
+              (buffer-text (buffer-string)))
+     (widget-setup)
+     (should (memrise:contains-all
+              buffer-text "qwe" "rty" "asd" "fgh" "jkl" "zxc"))
+     (with-mock
+      (memrise:mock-submit)
+      (memrise:press "a")
+      (should (equal (memrise--widget-get-answer widget)
+                     '("qwe")))
+      (memrise:press "f")
+      (should (equal (memrise--widget-get-answer widget)
+                     '("qwe" "fgh")))
+      (memrise:press "a")
+      (should (equal (memrise--widget-get-answer widget)
+                     '("qwe" "fgh" "qwe")))
+      (memrise:press "C-a C-d")
+      (should (equal (memrise--widget-get-answer widget)
+                     '("fgh" "qwe")))
+      (memrise:press "C-e <backspace>")
+      (should (equal (memrise--widget-get-answer widget)
+                     '("fgh")))
+      (memrise:press "a")
+      (should (equal (memrise--widget-get-answer widget)
+                     '("fgh" "qwe")))
+      (memrise:press "C-3 C-b s d")
+      (should (equal (memrise--widget-get-answer widget)
+                     '("fgh" "qwe" "rty" "asd")))
+      (should (equal (widget-value widget)
+                     "fgh qwe rty asd "))
+      (memrise:press "M-b M-b f")
+      (should (equal (memrise--widget-get-answer widget)
+                     '("fgh" "qwe" "fgh" "rty" "asd")))
+      (memrise:press "C-m")))))
+
+(ert-deftest memrise:construct-choices-non-list ()
+  (let* ((incorrect '("abc" "fgh" "jkl" "fgh" "rty" "rty"))
+         (correct "rty")
+         (result (memrise-construct-choices correct incorrect 4 3)))
+    (should (equal result (-distinct result)))))
+
+(ert-deftest memrise:construct-choices-list ()
+  (let* ((incorrect '("abc" "fgh" "jkl" "fgh" "rty" "rty"))
+         (correct '("qwe" "rty"))
+         (result (memrise-construct-choices correct incorrect 4 3)))
+    (should (equal result (-distinct result)))))
+
+(ert-deftest memrise:construct-choices-min ()
+  (let* ((incorrect '("abc" "fgh" "jkl" "fgh" "rty" "rty"))
+         (correct '("uio" "qwe" "rty" "123"))
+         (result (memrise-construct-choices correct incorrect 4 3)))
+    (should (equal 7 (length result)))))
+
+(ert-deftest memrise:construct-choices-max ()
+  (let* ((incorrect '("abc" "fgh"))
+         (correct '("uio" "qwe"))
+         (result (memrise-construct-choices correct incorrect 10 3)))
+    (should (equal 4 (length result)))))
 
 ;;; memrise-widget-test.el ends here
