@@ -13,6 +13,13 @@
 
 (define-derived-mode memrise-session-mode fundamental-mode "Memrise-session")
 
+(defconst memrise-supported-tests '("multiple_choice"
+                                    "reversed_multiple_choice"
+                                    "audio_multiple_choice"
+                                    "typing"
+                                    "tapping")
+  "List of supported Memrise tests")
+
 (add-hook 'memrise-session-mode-hook 'memrise-turn-off-completions)
 
 (defun memrise-turn-off-completions ()
@@ -106,9 +113,7 @@ Completion doesn't really help a learning process."
   "According to the given `level' picks one of the `tests'"
   ;; filter out "pronunciation" tests for now
   (let ((tests (seq-filter
-                (lambda (test) (not (-contains-p '("pronunciation"
-                                              "multiple_choice_sample_sentence")
-                                            (car test))))
+                (lambda (test) (-contains-p memrise-supported-tests (car test)))
                 tests)))
     (or (assoc-default "tapping" tests)
         (if (eq level 1)
