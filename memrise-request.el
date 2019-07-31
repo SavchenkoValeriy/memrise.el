@@ -22,7 +22,7 @@
 
 ;;; Commentary:
 
-;; This source file contents all the functions and pieces of data related
+;; This source file contains all the functions and pieces of data related
 ;; to Memrise requests.  Requests we use to login, receive data and send
 ;; answers.
 

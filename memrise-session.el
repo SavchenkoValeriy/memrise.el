@@ -1,11 +1,38 @@
 ;;; memrise-session.el --- Memrise session, from parsing to execution  -*- lexical-binding: t; -*-
 
+;; Copyright (C) 2017-2019  Valeriy Savchenko
+
+;; Author: Valeriy Savchenko <sinmipt@gmail.com>
+
+;; This file is NOT part of GNU Emacs.
+
+;; memrise.el is free software: you can redistribute it and/or modify
+;; it under the terms of the GNU General Public License as published by
+;; the Free Software Foundation, either version 3 of the License, or
+;; (at your option) any later version.
+
+;; memrise.el is distributed in the hope that it will be useful,
+;; but WITHOUT ANY WARRANTY; without even the implied warranty of
+;; MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+;; GNU General Public License for more details.
+
+;; You should have received a copy of the GNU General Public License
+;; along with memrise.el.
+;; If not, see <http://www.gnu.org/licenses/>.
+
+;;; Commentary:
+
+;; This module contains all high-level functions related to Memrise
+;; learning sessions.  It defines which tests are chosen, the number of
+;; choices and so on.
+
+;;; Code:
+
 (require 'memrise-request)
 (require 'memrise-widget)
 (require 'memrise-session-objects)
 (require 'memrise-session-parser)
 (require 'dash)
-(require 'emms)
 (require 's)
 
 (setq memrise-session-mode-map
@@ -18,12 +45,19 @@
                                     "audio_multiple_choice"
                                     "typing"
                                     "tapping")
-  "List of supported Memrise tests")
+  "List of supported Memrise tests.")
+
+(defcustom memrise-session-length
+  nil
+  "Number of tasks in Memrise session (nil for going with the default)."
+  :type '(choice (const nil) integer)
+  :group 'memrise)
 
 (add-hook 'memrise-session-mode-hook 'memrise-turn-off-completions)
 
 (defun memrise-turn-off-completions ()
   "Turn off completion minor modes during session.
+
 Completion doesn't really help a learning process."
   (when (fboundp 'company-mode)
     (company-mode -1))
@@ -34,7 +68,7 @@ Completion doesn't really help a learning process."
   (get-buffer-create "*session*"))
 
 (defun memrise-start-learn-session (course-id)
-  "Start a new memrise learn session"
+  "Start a new memrise learn session for `COURSE-ID'."
   (memrise-start-session course-id "learn"))
 
 (defun memrise-start-review-session (course-id)
@@ -71,22 +105,35 @@ Completion doesn't really help a learning process."
   (widget-insert (or (oref session title)
                      "Review"))
   (widget-insert "\n\n")
-  (memrise-display-tasks (oref session tasks)))
+  (memrise-display-tasks (memrise--get-session-tasks)))
+
+(defun memrise--get-session-tasks ()
+  "Return a list of session tasks."
+  (let ((tasks (oref session tasks)))
+    (if memrise-session-length
+        (-take memrise-session-length tasks)
+      tasks)))
 
 (defun memrise-display-tasks (tasks)
-  (let* ((task (car tasks))
-         (selected-learnable (assoc-default (oref task learnable-id)
-                                            (oref session learnables))))
-    (setq learnable selected-learnable)
-    (setq next-task (-partial 'memrise-display-next-task-internal tasks))
-    (setq main-widget nil)
-    (setq main-widget
-          (if (string= (oref task template)
-                       "presentation")
-              (memrise-presentation learnable)
-            (memrise-pick-and-display-test learnable
-                                           (oref task learn-level))))
-    (widget-setup)))
+  "Display `TASKS' one by one."
+  (let ((task (car tasks)))
+    (if (null task)
+        (memrise-end-session)
+      (setq learnable (assoc-default (oref task learnable-id)
+                                     (oref session learnables)))
+      (setq next-task (-partial 'memrise-display-next-task-internal tasks))
+      (setq main-widget nil)
+      (setq main-widget
+            (if (string= (oref task template)
+                         "presentation")
+                (memrise-presentation learnable)
+              (memrise-pick-and-display-test learnable
+                                             (oref task learn-level))))
+      (widget-setup))))
+
+(defun memrise-end-session ()
+  (message "Learning session is over. Congrats!")
+  (kill-buffer (memrise-session-buffer)))
 
 (defun memrise-pick-and-display-test (learnable level)
   (let* ((all-tests (oref session tests))
@@ -110,12 +157,12 @@ Completion doesn't really help a learning process."
                  `(nil     ,memrise-maximal-number-of-choices)))
 
 (defun memrise-pick-test (tests level)
-  "According to the given `level' picks one of the `tests'"
-  ;; filter out "pronunciation" tests for now
+  "According to the given `LEVEL' picks one of the `TESTS'."
+  ;; filter out all not supported tests
   (let ((tests (seq-filter
                 (lambda (test) (-contains-p memrise-supported-tests (car test)))
                 tests)))
-    (if (eq level 1)
+    (if (<= level 1)
         (assoc-default "multiple_choice" tests)
       (cdr (memrise-random-element tests)))))
 
@@ -161,18 +208,5 @@ Completion doesn't really help a learning process."
   (setq memrise-session-mode-map
         (copy-keymap widget-keymap))
   (use-local-map memrise-session-mode-map))
-
-(defvar memrise-video-quality 'medium
-  "Memrise video quality, one of '(low medium high)")
-
-(defcustom memrise-material-storage-directory
-  (concat (file-name-as-directory user-emacs-directory) "memrise")
-  "Directory to store data related to request.el."
-  :type 'directory
-  :group 'memrise)
-
-(defun memrise-test ()
-  (interactive)
-  (message "%S" (memrise-parse-session session-test)))
 
 (provide 'memrise-session)

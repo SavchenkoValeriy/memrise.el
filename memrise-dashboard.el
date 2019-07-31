@@ -45,8 +45,7 @@
    (difficult :documentation "number of difficult words")
    (id :documentation "memrise ID of the course")
    (start :documentation "dashboard position where course widget starts")
-   (end :documentation "dashboard position where course widget ends")
-   ))
+   (end :documentation "dashboard position where course widget ends")))
 
 (defun memrise-courses ()
   (with-current-buffer (memrise-dashboard-buffer)
@@ -111,11 +110,13 @@
 (defcustom memrise-review-icon
   (all-the-icons-faicon "tint" :v-adjust 0.0)
   "Icon to use for words that require review/water"
+  :type 'string
   :group 'memrise)
 
 (defcustom memrise-difficult-icon
   (all-the-icons-faicon "bolt" :v-adjust 0.0)
   "Icon to use for words marked as 'difficult'"
+  :type 'string
   :group 'memrise)
 
 (defun memrise-insert-course (text course)
