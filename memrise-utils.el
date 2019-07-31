@@ -46,5 +46,14 @@ One can also provide `ARGS' for the `FUN'."
   "Convert `INTEGER' representing an ID into a symbol."
   (intern (number-to-string integer)))
 
+(defun memrise--to-buffer (buffer)
+  "Copy contents of the current buffer to `BUFFER'."
+  (let ((oldbuf (current-buffer)))
+    (with-current-buffer (get-buffer-create buffer)
+      (barf-if-buffer-read-only)
+      (erase-buffer)
+      (save-excursion
+        (insert-buffer-substring oldbuf)))))
+
 (provide 'memrise-utils)
 ;;; memrise-utils.el ends here
