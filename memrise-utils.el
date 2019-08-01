@@ -56,6 +56,15 @@ One can also provide `ARGS' for the `FUN'."
         (insert-buffer-substring oldbuf)))))
 
 (defun memrise-icase (value &rest args)
+  "Match `VALUE' against the cases provided in `ARGS'.
+
+`ARGS' should be in one of the following forms:
+  `((`START' . `END') `RETURN-VALUE'), where `START' and `END' define a
+closed interval where the `VALUE' should fall so `RETURN-VALUE' is returned.
+  `(`ELEMENT' `RETURN-VALUE') corresponds to the case, in which `RETURN-VALUE'
+is returned if `VALUE' equals to numerical `ELEMENT' (a range with only one
+point).
+  `(nil `RETURN-VALUE') returns `RETURN-VALUE' whenever `VALUE' is nil."
   (let* ((head (car args))
          (range (car head))
          (result (cadr head)))
@@ -67,6 +76,9 @@ One can also provide `ARGS' for the `FUN'."
      (t (apply 'memrise-icase value (cdr args))))))
 
 (defun memrise-icase-in-range-p (value range)
+  "Check that `VALUE' is in `RANGE'.
+
+`RANGE' can be a cons (`START' . `END'), single `ELEMENT' or nil."
   (cond
    ((-cons-pair? range) (and value ;; value can be `nil'
                              (>= value (car range))
