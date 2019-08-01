@@ -32,13 +32,17 @@
 (require 'memrise-widget)
 (require 'memrise-session-objects)
 (require 'memrise-session-parser)
+(require 'memrise-utils)
 (require 'dash)
 (require 's)
 
+;; TODO: check if we still need it (or ever needed it)
 (setq memrise-session-mode-map
       (copy-keymap widget-keymap))
 
-(define-derived-mode memrise-session-mode fundamental-mode "Memrise-session")
+(define-derived-mode memrise-session-mode
+  fundamental-mode "Memrise-session"
+  "Mode for holding Memrise learning sessions")
 
 (defconst memrise-supported-tests '("multiple_choice"
                                     "reversed_multiple_choice"
@@ -65,6 +69,7 @@ Completion doesn't really help a learning process."
     (auto-complete-mode -1)))
 
 (defun memrise-session-buffer ()
+  "Get buffer for the session (it should always be no more than one)."
   (get-buffer-create "*session*"))
 
 (defun memrise-start-learn-session (course-id)
@@ -72,11 +77,16 @@ Completion doesn't really help a learning process."
   (memrise-start-session course-id "learn"))
 
 (defun memrise-start-review-session (course-id)
-  "Start a new memrise review/water session"
+  "Start a new memrise review/water session for `COURSE-ID'."
   (memrise-start-session course-id "classic_review"))
 
 (defun memrise-start-session (course-id type)
-  "Start a new memrise session"
+  "Start a new memrise session for `COURSE-ID'.
+
+`TYPE' is the internal Memrise name for learning sessions.
+
+Prefer using `memrise-start-learn-session' and
+`memrise-start-review-session' instead."
   (let ((buffer (memrise-session-buffer))
         (json-array-type 'list))
     (with-current-buffer buffer
@@ -86,20 +96,26 @@ Completion doesn't really help a learning process."
        'memrise-start-session-internal))))
 
 (defun memrise-start-session-internal (json)
+  "Start session for the given `JSON' from Memrise."
   (with-current-buffer (memrise-session-buffer)
     (let ((inhibit-read-only t))
       (kill-all-local-variables)
       (erase-buffer)
       (memrise-session-mode)
+      ;; we want to access top-level session object whenever we want
       (make-local-variable 'session)
+      ;; the same goes to the currently learned object
       (make-local-variable 'learnable)
+      ;; convert `JSON' into memrise.el internal structures
       (setq session (memrise-parse-session json))
       (memrise-display-session)
       (switch-to-buffer (memrise-session-buffer)))))
 
 (defun memrise-display-session ()
+  "Display new session in the current buffer."
   (make-local-variable 'main-widget)
   (make-local-variable 'next-task)
+  ;; TODO: use UI format strings to make this part customizable
   (widget-insert (oref session course-name))
   (widget-insert "\n")
   (widget-insert (or (oref session title)
@@ -116,26 +132,32 @@ Completion doesn't really help a learning process."
 
 (defun memrise-display-tasks (tasks)
   "Display `TASKS' one by one."
-  (let ((task (car tasks)))
+  (-let (((task . rest-tasks) tasks))
     (if (null task)
+        ;; no tasks left, we did it!
         (memrise-end-session)
+      ;; find learnable from the task
       (setq learnable (assoc-default (oref task learnable-id)
                                      (oref session learnables)))
-      (setq next-task (-partial 'memrise-display-next-task-internal tasks))
+      (setq next-task (-partial 'memrise-display-next-task-internal rest-tasks))
       (setq main-widget nil)
       (setq main-widget
+            ;; task's template is either "template" or "presentation"
             (if (string= (oref task template)
                          "presentation")
                 (memrise-presentation learnable)
+              ;; "sentinel" stands for test
               (memrise-pick-and-display-test learnable
                                              (oref task learn-level))))
       (widget-setup))))
 
 (defun memrise-end-session ()
+  "End the current learning session."
   (message "Learning session is over. Congrats!")
   (kill-buffer (memrise-session-buffer)))
 
 (defun memrise-pick-and-display-test (learnable level)
+  "Pick a test for `LEARNABLE' according to the `LEVEL'."
   (let* ((all-tests (oref session tests))
          (tests-for-this-learnable (assoc-default
                                     (oref learnable id)
@@ -144,11 +166,12 @@ Completion doesn't really help a learning process."
     (memrise-display-test (memrise-pick-test tests-for-this-learnable level)
                           number-of-choices)))
 
-(defvar memrise-minimal-number-of-choices 4)
-(defvar memrise-average-number-of-choices 6)
-(defvar memrise-maximal-number-of-choices 8)
+(defconst memrise-minimal-number-of-choices 4)
+(defconst memrise-average-number-of-choices 6)
+(defconst memrise-maximal-number-of-choices 8)
 
 (defun memrise-decide-number-of-choices (level)
+  "Decide on the number of choices in test based on the `LEVEL'."
   (memrise-icase level
                  `((0 . 2) ,memrise-minimal-number-of-choices)
                  `((3 . 4) ,memrise-average-number-of-choices)
@@ -157,56 +180,49 @@ Completion doesn't really help a learning process."
                  `(nil     ,memrise-maximal-number-of-choices)))
 
 (defun memrise-pick-test (tests level)
-  "According to the given `LEVEL' picks one of the `TESTS'."
+  "Pick one of the `TESTS' with respect to the given `LEVEL'."
   ;; filter out all not supported tests
   (let ((tests (seq-filter
                 (lambda (test) (-contains-p memrise-supported-tests (car test)))
                 tests)))
     (if (<= level 1)
+        ;; choose "multiple_choice" for the very early levels
         (assoc-default "multiple_choice" tests)
       (cdr (memrise-random-element tests)))))
 
 (defun memrise-display-test (test number)
+  "Construct and display `TEST' widget in the session buffer.
+
+Type of widget is selected based on the kind of `TEST'.
+`NUMBER' defines the number of options to select from whenever applicable."
   (pcase (oref test kind)
     ("multiple_choice"          (memrise-multiple-choice-widget test number))
-    ("reversed_multiple_choice" (memrise-reversed-multiple-choice-widget test number))
+    ("reversed_multiple_choice" (memrise-reversed-multiple-choice-widget
+                                 test number))
     ("audio_multiple_choice"    (memrise-audio-multiple-choice-widget
                                  test memrise-minimal-number-of-choices))
     ("typing"                   (memrise-typing-widget test))
     ("tapping"                  (memrise-tapping-widget test))))
 
-(defun memrise-icase (value &rest args)
-  (let* ((head (car args))
-         (range (car head))
-         (result (cadr head)))
-    (cond
-     ((not head) nil) ;; the list of args is over
-     ;; if value \in range -> return corresponding result
-     ((memrise-icase-in-range-p value range) result)
-     ;; try other arguments
-     (t (apply 'memrise-icase value (cdr args))))))
-
-(defun memrise-icase-in-range-p (value range)
-  (cond
-   ((-cons-pair? range) (and value ;; value can be `nil'
-                             (>= value (car range))
-                             (<= value (cdr range))))
-   ;; if range is not actually a range, simply compare values
-   (t (eq value range))))
-
 (defun memrise-display-next-task (widget)
+  "Display the next task from the `WIDGET'."
   (interactive)
   (funcall next-task widget))
 
 (defun memrise-display-next-task-internal (tasks widget)
+  "Display `TASKS' instead of the `WIDGET'."
   (if widget
+      ;; we don't need it anymore
       (widget-delete widget))
+  ;; clean up after `WIDGET' - reset all the binding
   (memrise-reset-session-bindings)
-  (memrise-display-tasks (cdr tasks)))
+  (memrise-display-tasks tasks))
 
 (defun memrise-reset-session-bindings ()
+  "Restore original session bindings."
   (setq memrise-session-mode-map
         (copy-keymap widget-keymap))
   (use-local-map memrise-session-mode-map))
 
 (provide 'memrise-session)
+;;; memrise-session.el ends here

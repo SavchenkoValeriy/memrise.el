@@ -55,5 +55,24 @@ One can also provide `ARGS' for the `FUN'."
       (save-excursion
         (insert-buffer-substring oldbuf)))))
 
+(defun memrise-icase (value &rest args)
+  (let* ((head (car args))
+         (range (car head))
+         (result (cadr head)))
+    (cond
+     ((not head) nil) ;; the list of args is over
+     ;; if value \in range -> return corresponding result
+     ((memrise-icase-in-range-p value range) result)
+     ;; try other arguments
+     (t (apply 'memrise-icase value (cdr args))))))
+
+(defun memrise-icase-in-range-p (value range)
+  (cond
+   ((-cons-pair? range) (and value ;; value can be `nil'
+                             (>= value (car range))
+                             (<= value (cdr range))))
+   ;; if range is not actually a range, simply compare values
+   (t (eq value range))))
+
 (provide 'memrise-utils)
 ;;; memrise-utils.el ends here
