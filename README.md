@@ -48,4 +48,4 @@ Typing test is the hardest, it asks user to type in the correct translation. All
 
 ## Demo
 
-TODO: film a video and put a link here
+You can find a short video of me doing some German here: https://www.youtube.com/watch?v=9BC875XHq0o
