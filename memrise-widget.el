@@ -1,17 +1,40 @@
 ;;; memrise-widget.el --- Collection of memrise widgets -*- lexical-binding: t; -*-
 
+;; Copyright (C) 2017-2019  Valeriy Savchenko
+
+;; Author: Valeriy Savchenko <sinmipt@gmail.com>
+
+;; This file is NOT part of GNU Emacs.
+
+;; memrise.el is free software: you can redistribute it and/or modify
+;; it under the terms of the GNU General Public License as published by
+;; the Free Software Foundation, either version 3 of the License, or
+;; (at your option) any later version.
+
+;; memrise.el is distributed in the hope that it will be useful,
+;; but WITHOUT ANY WARRANTY; without even the implied warranty of
+;; MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+;; GNU General Public License for more details.
+
+;; You should have received a copy of the GNU General Public License
+;; along with memrise.el.
+;; If not, see <http://www.gnu.org/licenses/>.
+
 ;;; Commentary:
+
+;; This module contains all of the memrise.el widgets and all of the trickery
+;; connected to them.
 
 ;;; Code:
 
-(require 'memrise-utils)
-(require 'memrise-ui)
+(require 'memrise-media)
 (require 'memrise-request)
+(require 'memrise-ui)
+(require 'memrise-utils)
 (require 'widget)
 (require 'wid-edit)
 (require 'dash)
 (require 'all-the-icons)
-(require 'emms)
 (require 'rainbow-delimiters)
 
 (defcustom memrise-radio-keys '([?a] [?s] [?d] [?f] [?g] [?h] [?j] [?k] [?l] [?\;]
@@ -23,6 +46,16 @@
 
 (defcustom memrise-input-mode-key [?\C-i]
   "Key to turn on/off memrise button input mode."
+  :type '(key-sequence :tag "key")
+  :group 'memrise)
+
+(defcustom memrise-submit-key [?\C-m]
+  "Key to submit current answer."
+  :type '(key-sequence :tag "key")
+  :group 'memrise)
+
+(defcustom memrise-replay-audio-key [?\C-r]
+  "Key to replay the test's audio."
   :type '(key-sequence :tag "key")
   :group 'memrise)
 
@@ -53,25 +86,25 @@
 (defcustom memrise-radio-on
   (all-the-icons-faicon "dot-circle-o" :v-adjust 0.0)
   "Symbol to show for chosen radio button."
-  :type '(string)
+  :type 'string
   :group 'memrise)
 
 (defcustom memrise-radio-off
   (all-the-icons-faicon "circle-o" :v-adjust 0.0)
   "Symbol to show for not chosen radio button."
-  :type '(string)
+  :type 'string
   :group 'memrise)
 
 (defcustom memrise-audio-radio-on
   (all-the-icons-faicon "play-circle" :v-adjust 0.0)
   "Symbol to show for chosen audio radio button."
-  :type '(string)
+  :type 'string
   :group 'memrise)
 
 (defcustom memrise-audio-radio-off
   memrise-radio-off
   "Symbol to show for not chosen audio radio button."
-  :type '(string)
+  :type 'string
   :group 'memrise)
 
 (defun memrise-presentation (learnable)
@@ -85,8 +118,7 @@
   :prefix-format memrise-presentation-format
   :requires-audio 'before
   :get-audio #'memrise-get-audio-from-learnable
-  :create #'memrise-presentation-widget-create
-  )
+  :create #'memrise-presentation-widget-create)
 
 (defun memrise-presentation-widget-create (widget)
   "Create a memrise-presentation-widget from `WIDGET'."
@@ -94,7 +126,9 @@
          (prefix-format  (widget-get widget :prefix-format))
          (text           (memrise-format-widget prefix-format learnable)))
     (widget-put widget :format text)
-    (local-set-key (kbd "C-m") (memrise-make-interactive (-partial 'memrise-display-next-task widget)))
+    (local-set-key memrise-submit-key
+                   (memrise-make-interactive
+                    (-partial 'memrise-display-next-task widget)))
     (widget-default-create widget)
     (memrise-widget-setup-audio widget)))
 
@@ -188,8 +222,8 @@ with a translation of a given word in a source language.
     (widget-put widget :args (memrise-session-itemize-choices choices))
     (if instant-submit
         (widget-put widget :notify (memrise-make-widget-callback submit))
-      (local-set-key (kbd "C-m") (memrise-make-interactive
-                                  (-partial submit widget))))
+      (local-set-key memrise-submit-key (memrise-make-interactive
+                                         (-partial submit widget))))
     (widget-default-create widget)
     (when assign-keys
       (memrise-assign-buttons-keybindings (widget-get widget :buttons)
@@ -201,7 +235,7 @@ with a translation of a given word in a source language.
 (defun memrise-choice-widget-submit-answer (widget)
   "Read the value of `WIDGET' and submit it as the answer."
   (let* ((test (widget-get widget :test))
-         (answer (oref learnable text))
+         (answer (memrise--get-real-answer-for-the-prompt test))
          (given (memrise--widget-get-answer widget)))
     (if (not given)
         (message "Please, give an answer first!")
@@ -227,6 +261,16 @@ with a translation of a given word in a source language.
         (memrise-widget-run-hooks (widget-get widget :on-submit-hook) widget)
         (memrise--proceed-to-the-next-test widget)))))
 
+(defun memrise--get-real-answer-for-the-prompt (test)
+  "Get the correct answer for the `TEST' to show in the prompt."
+  (if (string= "audio_multiple_choice"
+               (oref test kind))
+      ;; audio questions have mp3 files as answers, that is not very
+      ;; readable, so we use a text of the current learnable
+      (oref learnable text)
+    ;; otherwise the answer will do
+    (oref test answer)))
+
 (defun memrise--proceed-to-the-next-test (widget)
   "Finish up with `WIDGET' and proceed with the next test widget."
   (run-at-time "0.5 sec"
@@ -236,33 +280,22 @@ with a translation of a given word in a source language.
                widget))
 
 (defun memrise--get-number-of-points (test)
+  "Decide on the number of points for the `TEST'."
   ;; TODO: calculate the number of points based on the current session and test
   45)
 
 (defun memrise--widget-get-answer (widget)
+  "Get the given answer from the `WIDGET'."
+  ;; widget might've overriden the get-answer function
   (let ((get-answer (widget-get widget :get-answer)))
     (if get-answer
         (funcall get-answer widget)
+      ;; if no, just take the value
       (widget-value widget))))
 
 (defun memrise--is-answer-correct (test answer)
-  "TODO"
+  "Return t if the `ANSWER' is the correct answer for `TEST'."
   (-contains-p (oref test correct) answer))
-
-(defun memrise-call-after-all-audio-is-finished (func &rest args)
-  "Call `FUNC' with `ARGS' after all audio is over."
-  (let ((callback (-partial #'apply func args)))
-    (defun memrise-audio-hook ()
-      (remove-hook 'emms-player-finished-hook
-                   'memrise-audio-hook)
-      ;; running callback synchroneously mess up with emms
-      (run-at-time "0.0 sec" nil callback))
-    (if (not emms-player-playing-p)
-        ;; nothing is playing - ready to call
-        (funcall callback)
-      ;; use emms callbacks to call it after player has finished
-      (add-hook 'emms-player-finished-hook
-                'memrise-audio-hook))))
 
 (defun memrise-get-audio-from-learnable (widget)
   "Extracts audio file from `WIDGET's learnable."
@@ -331,7 +364,7 @@ with a translation of a given word in a source language.
                                      (funcall submit widget)))))
     (widget-default-create widget)
     ;;    (use-local-map widget-field-keymap)
-    (local-set-key (kbd "C-m") (memrise-make-interactive submit widget))
+    (local-set-key memrise-submit-key (memrise-make-interactive submit widget))
     (memrise-widget-setup-audio widget)
     (when (eq input-method 'default)
       (memrise-setup-default-input-mode widget))
@@ -403,7 +436,7 @@ with a translation of a given word in a source language.
     (widget-put widget :format (concat text "%v"))
     (widget-put widget :keymap nil)
     (widget-default-create widget)
-    (local-set-key (kbd "C-m") (memrise-make-interactive submit widget))
+    (local-set-key memrise-submit-key (memrise-make-interactive submit widget))
     (memrise-widget-setup-audio widget)
     (memrise-setup-tapping-bindings widget)
     (memrise-setup-tapping-choices widget)
@@ -411,17 +444,22 @@ with a translation of a given word in a source language.
     (goto-char (widget-field-start widget))))
 
 (defun memrise-setup-tapping-bindings (widget)
+  "Setup bindings for the tapping input `WIDGET'."
+  ;; 'delete' deletes the next word
   (local-set-key (kbd "C-d") (memrise-make-interactive
                               #'memrise-delete-next-tap-word))
+  ;; and 'backspace' deletes the previous word
   (local-set-key [backspace] (memrise-make-interactive
                               #'memrise-delete-previous-tap-word)))
 
 (defun memrise--tapping-get-answer (widget)
+  "Get the answer from the tapping `WIDGET'."
   (save-excursion
     (-unfold #'memrise--tapping-get-answer-internal
              (widget-field-start widget))))
 
 (defun memrise--tapping-get-answer-internal (where)
+  "Keep moving to the right (`WHERE') until we have words."
   (goto-char where)
   (-when-let* ((tap-word (memrise-get-this-tap-word))
                (end (overlay-end tap-word))
@@ -430,42 +468,52 @@ with a translation of a given word in a source language.
     (cons word end)))
 
 (defun memrise-delete-next-tap-word ()
+  "Delet the next tap word in the input field."
   (let ((tap-word (memrise-get-this-or-next-tap-word)))
     (memrise-delete-tap-word tap-word)))
 
 (defun memrise-delete-previous-tap-word ()
+  "Delet the previous tap word in the input field."
   (let ((tap-word (memrise-get-this-or-previous-tap-word)))
     (memrise-delete-tap-word tap-word)))
 
 (defun memrise-delete-tap-word (tap-word)
+  "Delet the `TAP-WORD' in the input field."
   (when tap-word
     (delete-region (overlay-start tap-word)
                    (overlay-end tap-word))
     (delete-overlay tap-word)))
 
 (defun memrise-get-this-or-next-tap-word ()
+  "Get the tap word under the point or the following one."
   (or (memrise-get-this-tap-word)
       (memrise-get-next-tap-word)))
 
 (defun memrise-get-this-or-previous-tap-word ()
+  "Get the tap word under the point or the previous one."
   (or (memrise-get-this-tap-word)
       (memrise-get-previous-tap-word)))
 
 (defun memrise-get-this-tap-word ()
+  "Get the tap word under the point."
   (memrise-find-tap-word (point)))
 
 (defun memrise-get-next-tap-word ()
+  "Get the tap word from in front of the current point."
   (let ((next-overlay-pos (next-overlay-change (point))))
     (memrise-find-tap-word next-overlay-pos)))
 
 (defun memrise-get-previous-tap-word ()
+  "Get the tap word from behind of the current point."
   (let ((previous-overlay-pos (previous-overlay-change (point))))
     (memrise-find-tap-word previous-overlay-pos)))
 
 (defun memrise-find-tap-word (where)
+  "Get the tap word from `WHERE'."
   (memrise-find-tap-word-internal (overlays-at where)))
 
 (defun memrise-find-tap-word-internal (overlays)
+  "Find the tap word overlay from `OVERLAYS'."
   (let ((overlay (car overlays)))
     (if (not overlays)
         nil
@@ -474,6 +522,7 @@ with a translation of a given word in a source language.
         (memrise-find-tap-word-internal (cdr overlays))))))
 
 (defun memrise-setup-tapping-choices (widget)
+  "Setup the list of tapping words available for the user in `WIDGET'."
   (let* ((min     (widget-get widget :min))
          (max     (widget-get widget :max))
          (test    (widget-get widget :test))
@@ -505,28 +554,47 @@ with a translation of a given word in a source language.
     (insert (widget-value widget))))
 
 (defun memrise-pick-button-insert-complex-value (widget &optional _event)
+  "Insert a selected tap word into the `WIDGET'."
+  ;; parent is the input field
   (let* ((parent (widget-get widget :parent))
+         ;; where do we start:
+         ;; at the end of th input field (if we were not there at all)
          (start (or (memrise-goto-field parent)
+                    ;; at the next inserted tap word
                     (memrise-goto-next-tap-word)
+                    ;; or just from where we are if nothing from above applies
                     (point)))
+         ;; the inserted tap word that we are inserting in front of
          (next-tap-word (memrise-get-this-or-next-tap-word))
          end
          overlay)
+    ;; insert the tap word
     (memrise-pick-button-insert-value widget)
+    ;; insert a space after EVERY tap word (we couldn't know if it should
+    ;; have a space after it or not, but it's safer to put every time)
     (insert " ")
+    ;; store the point of where we are after inserting the tap word
     (setq end (point))
+    ;; this new area from `start' to `end' is a new inserted tap word
     (setq overlay (make-overlay start end))
     (overlay-put overlay 'tap t)
+    ;; if we had a tap word in front...
     (when next-tap-word
+      ;; ...we should fix its positions as it now includes itself
+      ;; AND the new tap word, so we tell it to start where the new
+      ;; one ends
       (move-overlay next-tap-word end (overlay-end next-tap-word)))))
 
 (defun memrise-goto-next-tap-word ()
+  "Move the point to the next tap word when it makes sense."
+  ;; check that there is a tap word in front
   (-when-let (tap-word (memrise-get-this-or-next-tap-word))
+    ;; if we are a the beginning of it, there is no need to move
     (unless (= (point) (overlay-start tap-word))
       (goto-char (overlay-end tap-word)))))
 
 (defun memrise-goto-field (field-widget)
-  "Goto editable field of `FIELD_WIDGET' if not there."
+  "Goto editable field of `FIELD-WIDGET' if not there."
   (unless (<= (widget-field-start field-widget)
               (point)
               (widget-field-text-end field-widget))
@@ -547,10 +615,16 @@ Provided `WIDGET' should have the following properties:
          (get-audio      (widget-get widget :get-audio))
          (audio          (funcall get-audio widget))
          (play (-partial 'memrise-play-audio audio)))
+    ;; check what we should do with the audio
     (cond ((eq requires-audio 'before)
+           ;; `before' - play it RIGHT NOW
            (funcall play)
-           (local-set-key (kbd "C-r") (memrise-make-interactive play)))
+           ;; and make a binding so the user can REPLAY it
+           (local-set-key memrise-replay-audio-key
+                          (memrise-make-interactive play)))
           ((eq requires-audio 'after)
+           ;; `after' - play it AFTER the user submits her answer.
+           ;; This means that we should put it as a submit hook.
            (widget-put widget :on-submit-hook
                        (cons (memrise-make-argument-ignoring-lambda play)
                              on-submit-hook))))))
@@ -558,21 +632,6 @@ Provided `WIDGET' should have the following properties:
 (defun memrise-audio-multiple-choice-widget-play (widget)
   "Play the audio currently picked in the `WIDGET'."
   (memrise-play-audio (widget-value widget)))
-
-(defun memrise-play-audio (audio)
-  "Play the given `AUDIO' file."
-  ;; 1. turning off `emms-info-asynchronously' seems like the only way
-  ;;    to get rid of the "EMMS: All track information loaded." message
-  ;; 2. EMMS tries to play next song and prints "No next track in playlist".
-  ;;    Setting 'emms-single-track' or using 'emms-toggle-single-track'
-  ;;    seems like a good solution, but for some reason doesn't work.
-  ;;    As the result, we temporarily refuse EMMS from even trying to play
-  ;;    the next track.
-  ;;    The worst part is that is still prints "No next track in playlist"
-  ;;    sometimes.
-  (let ((emms-info-asynchronously nil)
-        (emms-player-next-function #'ignore))
-    (emms-play-file audio)))
 
 (defun memrise-format-widget (format test-or-learnable)
   "Apply `FORMAT' to the given `TEST-OR-LEARNABLE'."
@@ -627,7 +686,11 @@ Provided `WIDGET' should have the following properties:
   (mapcar (lambda (x) `(item :value ,x)) choices))
 
 (defun memrise-create-pick-buttons (picks widget &optional map deactivate extra-args)
-  "Create buttons representing `PICKS' as children of `WIDGET'."
+  "Create buttons representing `PICKS' as children of `WIDGET'.
+
+Assign the corresponding bindings to the given key `MAP'.
+If `DEACTIVATE' is non-nil deactivate all these buttons.
+`EXTRA-ARGS' would be forwarded to the constructor of each of the created buttons."
   (let* ((buttons (mapcar (lambda (x)
                             (apply 'widget-create
                                    'memrise-pick-button
@@ -655,8 +718,9 @@ Optional `KEYMAP' parameter is defaulted to current keymap."
         (-zip buttons bindings (number-sequence 1 (length buttons)))))
 
 (defun memrise-assign-button-keybinding (keymap button keybinding index)
-  "For the given `KEYMAP' change radio `BUTTON' shape and `KEYBINDING',
-colors it with a rainbow color `INDEX'."
+  "Change radio `BUTTON' shape and `KEYBINDING' for the given `KEYMAP'.
+
+Color it with a rainbow color `INDEX'."
   (widget-put button
               :button-prefix
               (propertize (format "[%s] "

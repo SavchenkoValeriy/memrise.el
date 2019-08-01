@@ -28,6 +28,7 @@
 ;;; Code:
 
 (require 'memrise-utils)
+(require 'emms)
 
 (defvar memrise-video-quality 'medium
   "Memrise video quality, one of '(low medium high).")
@@ -74,6 +75,36 @@
           (make-directory dest-dir t))
       (url-copy-file what where)
       where)))
+
+(defun memrise-play-audio (audio)
+  "Play the given `AUDIO' file."
+  ;; 1. turning off `emms-info-asynchronously' seems like the only way
+  ;;    to get rid of the "EMMS: All track information loaded." message
+  ;; 2. EMMS tries to play next song and prints "No next track in playlist".
+  ;;    Setting 'emms-single-track' or using 'emms-toggle-single-track'
+  ;;    seems like a good solution, but for some reason doesn't work.
+  ;;    As the result, we temporarily refuse EMMS from even trying to play
+  ;;    the next track.
+  ;;    The worst part is that is still prints "No next track in playlist"
+  ;;    sometimes.
+  (let ((emms-info-asynchronously nil)
+        (emms-player-next-function #'ignore))
+    (emms-play-file audio)))
+
+(defun memrise-call-after-all-audio-is-finished (func &rest args)
+  "Call `FUNC' with `ARGS' after all audio is over."
+  (let ((callback (-partial #'apply func args)))
+    (defun memrise-audio-hook ()
+      (remove-hook 'emms-player-finished-hook
+                   'memrise-audio-hook)
+      ;; running callback synchroneously mess up with emms
+      (run-at-time "0.0 sec" nil callback))
+    (if (not emms-player-playing-p)
+        ;; nothing is playing - ready to call
+        (funcall callback)
+      ;; use emms callbacks to call it after player has finished
+      (add-hook 'emms-player-finished-hook
+                'memrise-audio-hook))))
 
 (provide 'memrise-media)
 ;;; memrise-media.el ends here

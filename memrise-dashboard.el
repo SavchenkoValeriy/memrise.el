@@ -66,7 +66,7 @@
   (let ((all (oref course number-of-things))
         (learned (oref course learned)))
     (if (eq (- all learned) 0)
-        (message "Nothing's left to learn in the course. Did you mean 'review'?")
+        (message "Nothing's left to learn in this course. Did you mean 'review'?")
       (memrise-start-learn-session (oref course id)))))
 
 (defun memrise-dashboard-course-review (course)
@@ -74,7 +74,7 @@
   (interactive (list (memrise-current-course)))
   (let ((to-review (oref course to-review)))
     (if (eq to-review 0)
-        (message "Nothing to review in the course. Did you mean 'learn'?")
+        (message "Nothing to review in this course. Did you mean 'learn'?")
       (memrise-start-review-session (oref course id)))))
 
 (defun memrise-dashboard-course-forward (course)
