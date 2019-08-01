@@ -185,7 +185,7 @@ Prefer using `memrise-start-learn-session' and
   (let ((tests (seq-filter
                 (lambda (test) (-contains-p memrise-supported-tests (car test)))
                 tests)))
-    (if (<= level 1)
+    (if (and level (<= level 1))
         ;; choose "multiple_choice" for the very early levels
         (assoc-default "multiple_choice" tests)
       (cdr (memrise-random-element tests)))))
