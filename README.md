@@ -23,6 +23,7 @@
         - [Tapping test](#tapping-test)
         - [Typing test](#typing-test)
 - [Demo](#demo)
+- [Contribute](#contribute)
 - [Alternatives](#alternatives)
 - [License](#license)
 
@@ -198,6 +199,12 @@ Typing test is the hardest, it asks user to type in the correct translation. All
 ## Demo
 
 You can find a short video of me doing some German here: https://www.youtube.com/watch?v=9BC875XHq0o
+
+## Contribute
+
+All contributions are most welcome!
+
+Don't hesitate firing up new PRs if you have any questions, problems or ideas. If you want to get involved in the project more than that, please do! We have a [contributing](./CONTRIBUTING.md) guide to give you some information on that.
 
 ## Alternatives
 
