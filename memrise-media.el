@@ -35,10 +35,9 @@
 
 (defcustom memrise-media-storage-directory
   (concat (file-name-as-directory user-emacs-directory) "memrise")
-  "Directory to store data related to request.el."
+  "Directory to store data related to memrise.el."
   :type 'directory
   :group 'memrise)
-
 
 (defun memrise-process-media (folder list-or-element)
   (if (listp list-or-element)
