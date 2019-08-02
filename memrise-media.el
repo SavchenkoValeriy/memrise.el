@@ -40,14 +40,21 @@
   :group 'memrise)
 
 (defun memrise-process-media (folder list-or-element)
+  "Download `LIST-OR-ELEMENT' into the `FOLDER'.
+
+`LIST-OR-ELEMENT' is one (or a list of) media file URL.
+Return a path (or a list of paths depending on the type of `LIST-OR-ELEMENT')
+to the downloaded media file."
   (if (listp list-or-element)
       (memrise-download-media folder list-or-element)
     (memrise-download folder list-or-element)))
 
 (defun memrise-download-media (folder urls)
+  "Download `URLS' into the `FOLDER'."
   (mapcar (-partial #'memrise-download folder) urls))
 
 (defun memrise-download (folder url)
+  "Download `URL' into the `FOLDER'."
   (let* ((file-dir (file-name-as-directory folder))
          (file (concat
                 file-dir
@@ -57,6 +64,7 @@
     (memrise-download-internal url file)))
 
 (defun memrise-hash (url)
+  "Calculate memrise.el hash for the given `URL'."
   (md5 url))
 
 (defun memrise-download-internal (what where)
