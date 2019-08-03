@@ -108,7 +108,7 @@ sessions."
 
 (defun memrise-next-course (course courses)
   "Return the next (with respect to the `COURSE') from the `COURSES'."
-  (let ((next-courses (cdr (member course (memrise-courses)))))
+  (let ((next-courses (cdr (member course courses))))
     (if next-courses
         (car next-courses)
       ;; if it was the last element - return the very first course
