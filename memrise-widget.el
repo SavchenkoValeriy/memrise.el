@@ -363,7 +363,6 @@ with a translation of a given word in a source language.
                                           (widget-value widget))
                                      (funcall submit widget)))))
     (widget-default-create widget)
-    ;;    (use-local-map widget-field-keymap)
     (local-set-key memrise-submit-key (memrise-make-interactive submit widget))
     (memrise-widget-setup-audio widget)
     (when (eq input-method 'default)
@@ -372,6 +371,7 @@ with a translation of a given word in a source language.
     (goto-char (widget-field-start widget))))
 
 (defun memrise-setup-default-input-mode (widget)
+  "Setup input mode for the typing `WIDGET'."
   (let* ((hint (widget-create
                 'item
                 :format (format "Press %s to turn input mode on/off:\n"
@@ -386,21 +386,35 @@ with a translation of a given word in a source language.
     (widget-put widget :buttons (cons hint buttons))
     (local-set-key memrise-input-mode-key
                    (memrise-make-interactive (-partial
-                                              #'memrise-switch-input-mode
-                                              buttons)))))
+                                              #'memrise--switch-input-mode
+                                              buttons)))
+    (widget-put widget :on-submit-hook
+                (cons #'memrise--turn-input-mode-off-hook
+                      (widget-get widget :on-submit-hook)))))
 
 (defun memrise-get-pretty-binding (binding)
   "Return a pretty representation of the `BINDING'."
   (propertize (key-description binding) 'face 'memrise-session-keybinding))
 
-(defun memrise-switch-input-mode (buttons)
+(defun memrise--turn-input-mode-off-hook (widget)
+  "Turn off input mode of the `WIDGET' so it doesn't mess with other widgets."
+  (memrise--turn-input-mode-off (widget-get widget :buttons)))
+
+(defun memrise--switch-input-mode (buttons)
   "Activate/deactivate memrise-input-mode and corresponding `BUTTONS'."
   (if memrise-input-mode
-      (progn
-        (memrise-input-mode -1)
-        (memrise-deactivate-widgets buttons))
-    (memrise-input-mode)
-    (memrise-activate-widgets buttons)))
+      (memrise--turn-input-mode-off buttons)
+    (memrise--turn-input-mode-on buttons)))
+
+(defun memrise--turn-input-mode-on (buttons)
+  "Turn on input mode for the given `BUTTONS'."
+  (memrise-input-mode)
+  (memrise-activate-widgets buttons))
+
+(defun memrise--turn-input-mode-off (buttons)
+  "Turn off input mode for the given `BUTTONS'."
+  (memrise-input-mode -1)
+  (memrise-deactivate-widgets buttons))
 
 (defun memrise-tapping-widget (test)
   "Create tapping `TEST'."

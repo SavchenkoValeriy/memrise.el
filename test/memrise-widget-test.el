@@ -157,4 +157,35 @@
          (result (memrise-construct-choices correct incorrect 10 3)))
     (should (equal 4 (length result)))))
 
+(ert-deftest memrise:test-typing-widget-input-mode-bug ()
+  ;; https://github.com/SavchenkoValeriy/memrise.el/issues/31
+  (with-memrise-test-session
+      (let* ((prompt (memrise-session-test-prompt))
+             (test (memrise-session-test
+                    :kind "typing"
+                    :prompt prompt
+                    :answer "qwe"
+                    :choices '("q" "w" "e")
+                    :correct '("qwe")))
+             (widget (memrise-typing-widget test))
+             (buffer-text (buffer-string)))
+        (widget-setup)
+        (with-mock
+          (mock (memrise--request-send-answer * * * * * *) :times 2)
+          (mock (memrise-play-audio *) :times 2)
+          (mock (memrise--proceed-to-the-next-test *) :times 2)
+          ;; stay in input mode when submitting the answer
+          (memrise:press "TAB asd C-m")
+          (widget-delete widget)
+          (memrise-reset-session-bindings)
+          (setq test (memrise-session-test
+                      :kind "multiple_choice"
+                      :prompt prompt
+                      :answer "qwe"
+                      :choices '("asd" "fgh" "jkl")
+                      :correct '("qwe")))
+          (setq widget (memrise-multiple-choice-widget test 4))
+          (widget-setup)
+          (memrise:press "a")))))
+
 ;;; memrise-widget-test.el ends here

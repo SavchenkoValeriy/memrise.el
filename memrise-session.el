@@ -214,7 +214,7 @@ Type of widget is selected based on the kind of `TEST'.
   (if widget
       ;; we don't need it anymore
       (widget-delete widget))
-  ;; clean up after `WIDGET' - reset all the binding
+  ;; clean up after `WIDGET' - reset all the bindings
   (memrise-reset-session-bindings)
   (memrise-display-tasks tasks))
 
