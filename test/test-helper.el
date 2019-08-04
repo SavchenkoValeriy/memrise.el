@@ -52,11 +52,13 @@ It would use `FAKE-FUN' if given and `memrise:mocked otherwise'."
   "Simulate pressing `KEY'."
   (execute-kbd-macro (read-kbd-macro key)))
 
-(defmacro memrise:mock-submit ()
+(defmacro memrise:mock-submit (&optional audio)
   "Mock widget submit functions."
-  `(progn
-     (mock (memrise--request-send-answer * * * * * *) :times 1)
-     (mock (memrise-widget-run-hooks * *) :times 1)
-     (mock (memrise--proceed-to-the-next-test *) :times 1)))
+  (let ((mocks '((mock (memrise--request-send-answer * * * * * *) :times 1)
+                 (mock (memrise--proceed-to-the-next-test * *) :times 1))))
+    (add-to-list 'mocks (if audio
+                            `(mock (memrise-play-audio ,audio) :times 1)
+                          '(mock (memrise-widget-run-hooks * *) :times 1)))
+    `(progn ,@mocks)))
 
 ;;; test-helper.el ends here

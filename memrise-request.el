@@ -45,6 +45,7 @@
   "Perform Memrise requests synchronously."
   :type 'boolean
   :group 'memrise)
+
 (defcustom memrise-save-received-data
   nil
   "Save raw data received from Memrise into a special buffer."

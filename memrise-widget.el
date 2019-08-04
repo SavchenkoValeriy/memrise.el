@@ -107,6 +107,42 @@
   :type 'string
   :group 'memrise)
 
+(defcustom memrise-pause-after-correct
+  0.5
+  "Pause (in seconds) to make after correct answer before the next test."
+  :type 'float
+  :group 'memrise)
+
+(defcustom memrise-pause-after-incorrect
+  2.0
+  "Pause (in seconds) to make after incorrect answer before the next test."
+  :type 'float
+  :group 'memrise)
+
+(defcustom memrise-typing-instant-submit
+  t
+  "Accept answer for a typing test automatically without explicit submit request."
+  :type 'boolean
+  :group 'memrise)
+
+(defcustom memrise-tapping-instant-submit
+  t
+  "Accept answer for a tapping test automatically without explicit submit request."
+  :type 'boolean
+  :group 'memrise)
+
+(defcustom memrise-multiple-choice-instant-submit
+  t
+  "Accept answer for a multiple choice test automatically without explicit submit request."
+  :type 'boolean
+  :group 'memrise)
+
+(defcustom memrise-reversed-multiple-choice-instant-submit
+  t
+  "Accept answer for a reversed multiple choice test automatically without explicit submit request."
+  :type 'boolean
+  :group 'memrise)
+
 (defun memrise-presentation (learnable)
   "Present a new `LEARNABLE' entity."
   (widget-create 'memrise-presentation-widget
@@ -147,6 +183,7 @@ language, for a given translation in a source language.
                  :test test
                  :prefix-format memrise-multiple-choice-format
                  :requires-audio 'after
+                 :instant-submit memrise-multiple-choice-instant-submit
                  :size number))
 
 (defun memrise-reversed-multiple-choice-widget (test number)
@@ -160,6 +197,7 @@ source language, for a given translation in a target language.
                  :test test
                  :prefix-format memrise-reversed-multiple-choice-format
                  :requires-audio 'before
+                 :instant-submit memrise-reversed-multiple-choice-instant-submit
                  :size number))
 
 (defun memrise-audio-multiple-choice-widget (test number)
@@ -177,6 +215,8 @@ with a translation of a given word in a source language.
                  :requires-audio nil
                  :notify (memrise-make-widget-callback
                           'memrise-audio-multiple-choice-widget-play)
+                 ;; it doesn't really make sense to do instant submit
+                 ;; for audio tests
                  :instant-submit nil
                  :labels (number-sequence 1 8)))
 
@@ -191,9 +231,9 @@ with a translation of a given word in a source language.
   :on memrise-radio-on
   :off memrise-radio-off
   :size 4
-  :submit 'memrise-choice-widget-submit-answer
+  :submit #'memrise-choice-widget-submit-answer
   :on-submit-hook nil
-  :instant-submit t
+  :instant-submit nil
   :labels '())
 
 (defun memrise-choice-widget-create (widget)
@@ -259,7 +299,9 @@ with a translation of a given word in a source language.
          ;; TODO: time the test for real
          5000)
         (memrise-widget-run-hooks (widget-get widget :on-submit-hook) widget)
-        (memrise--proceed-to-the-next-test widget)))))
+        (memrise--proceed-to-the-next-test widget (if correct?
+                                                      memrise-pause-after-correct
+                                                    memrise-pause-after-incorrect))))))
 
 (defun memrise--get-real-answer-for-the-prompt (test)
   "Get the correct answer for the `TEST' to show in the prompt."
@@ -271,9 +313,9 @@ with a translation of a given word in a source language.
     ;; otherwise the answer will do
     (oref test answer)))
 
-(defun memrise--proceed-to-the-next-test (widget)
-  "Finish up with `WIDGET' and proceed with the next test widget."
-  (run-at-time "0.5 sec"
+(defun memrise--proceed-to-the-next-test (widget time)
+  "Finish up with `WIDGET' and proceed with the next test widget after `TIME' seconds."
+  (run-at-time (format "%f sec" time)
                nil
                #'memrise-call-after-all-audio-is-finished
                #'memrise-display-next-task
@@ -311,12 +353,17 @@ with a translation of a given word in a source language.
   "Run `HOOKS' with `WIDGET' as their argument."
   (mapc (lambda (hook) (funcall hook widget)) hooks))
 
+(defun memrise--widget-add-hook (widget hook-name hook)
+  "Add `HOOK' for a `HOOK-NAME' event for the given `WIDGET'."
+  (widget-put widget hook-name
+              (cons hook (widget-get widget hook-name))))
+
 (defun memrise-typing-widget (test)
   "Create typing `TEST'."
   (widget-create 'memrise-text-input-widget
                  :test test
                  :prefix-format memrise-typing-format
-                 :instant-submit t
+                 :instant-submit memrise-typing-instant-submit
                  :requires-audio 'after
                  :get-audio #'memrise-get-audio-from-test))
 
@@ -324,13 +371,13 @@ with a translation of a given word in a source language.
   "Text input widget for memrise tests."
   :test nil
   :prefix-format ""
-  :create 'memrise-text-input-widget-create
+  :create #'memrise-text-input-widget-create
   :requires-audio nil
   :instant-submit nil
   :assign-keys t
   :input-method 'default
   :on-submit-hook nil
-  :submit 'memrise-choice-widget-submit-answer)
+  :submit #'memrise-choice-widget-submit-answer)
 
 (define-minor-mode memrise-input-mode
   "Memrise mode to press push buttons for input."
@@ -357,11 +404,7 @@ with a translation of a given word in a source language.
     (widget-put widget :format (concat text "%v"))
     (widget-put widget :keymap nil)
     (when instant-submit
-      (widget-put widget :notify (lambda (widget &rest _)
-                                   (when (memrise--is-answer-correct
-                                          test
-                                          (widget-value widget))
-                                     (funcall submit widget)))))
+      (widget-put widget :notify #'memrise--smart-instant-submit-hook))
     (widget-default-create widget)
     (local-set-key memrise-submit-key (memrise-make-interactive submit widget))
     (memrise-widget-setup-audio widget)
@@ -388,9 +431,9 @@ with a translation of a given word in a source language.
                    (memrise-make-interactive (-partial
                                               #'memrise--switch-input-mode
                                               buttons)))
-    (widget-put widget :on-submit-hook
-                (cons #'memrise--turn-input-mode-off-hook
-                      (widget-get widget :on-submit-hook)))))
+    (memrise--widget-add-hook widget
+                              :on-submit-hook
+                              #'memrise--turn-input-mode-off-hook)))
 
 (defun memrise-get-pretty-binding (binding)
   "Return a pretty representation of the `BINDING'."
@@ -430,7 +473,7 @@ with a translation of a given word in a source language.
   :prefix-format ""
   :create #'memrise-tapping-widget-create
   :requires-audio nil
-  :instant-submit t
+  :instant-submit memrise-tapping-instant-submit
   :assign-keys t
   :on-submit-hook nil
   :min 4
@@ -451,11 +494,23 @@ with a translation of a given word in a source language.
     (widget-put widget :keymap nil)
     (widget-default-create widget)
     (local-set-key memrise-submit-key (memrise-make-interactive submit widget))
+    (when instant-submit
+      (memrise--widget-add-hook
+       widget
+       :on-tap-hook
+       #'memrise--smart-instant-submit-hook))
     (memrise-widget-setup-audio widget)
     (memrise-setup-tapping-bindings widget)
     (memrise-setup-tapping-choices widget)
     ;; put cursor into a newly created text input
     (goto-char (widget-field-start widget))))
+
+(defun memrise--smart-instant-submit-hook (widget &rest _ignore)
+  "Check that the current answer in `WIDGET' is correct and submit it if it is."
+  (when (memrise--is-answer-correct
+         (widget-get widget :test)
+         (memrise--widget-get-answer widget))
+    (funcall (widget-get widget :submit) widget)))
 
 (defun memrise-setup-tapping-bindings (widget)
   "Setup bindings for the tapping input `WIDGET'."
@@ -563,6 +618,7 @@ with a translation of a given word in a source language.
   (mapc (lambda (x) (widget-apply x command)) widgets))
 
 (defun memrise-pick-button-insert-value (widget &optional _event)
+  "Insert value of a clicked `WIDGET' button into a parent field."
   (let ((parent (widget-get widget :parent)))
     (memrise-goto-field parent)
     (insert (widget-value widget))))
@@ -597,7 +653,9 @@ with a translation of a given word in a source language.
       ;; ...we should fix its positions as it now includes itself
       ;; AND the new tap word, so we tell it to start where the new
       ;; one ends
-      (move-overlay next-tap-word end (overlay-end next-tap-word)))))
+      (move-overlay next-tap-word end (overlay-end next-tap-word)))
+    ;; notify parent that "on-tap" event happened
+    (memrise-widget-run-hooks (widget-get parent :on-tap-hook) parent)))
 
 (defun memrise-goto-next-tap-word ()
   "Move the point to the next tap word when it makes sense."
@@ -625,7 +683,6 @@ Provided `WIDGET' should have the following properties:
 * :requires-audio - one of `(before after nil), when to play audio
 * :get-audio - a function to retrieve audio from `WIDGET' object"
   (let* ((requires-audio (widget-get widget :requires-audio))
-         (on-submit-hook (widget-get widget :on-submit-hook))
          (get-audio      (widget-get widget :get-audio))
          (audio          (funcall get-audio widget))
          (play (-partial 'memrise-play-audio audio)))
@@ -639,9 +696,10 @@ Provided `WIDGET' should have the following properties:
           ((eq requires-audio 'after)
            ;; `after' - play it AFTER the user submits her answer.
            ;; This means that we should put it as a submit hook.
-           (widget-put widget :on-submit-hook
-                       (cons (memrise-make-argument-ignoring-lambda play)
-                             on-submit-hook))))))
+           (memrise--widget-add-hook
+            widget
+            :on-submit-hook
+            (memrise-make-argument-ignoring-lambda play))))))
 
 (defun memrise-audio-multiple-choice-widget-play (widget)
   "Play the audio currently picked in the `WIDGET'."
