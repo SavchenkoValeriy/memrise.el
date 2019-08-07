@@ -96,7 +96,8 @@ to the downloaded media file."
   ;;    sometimes.
   (let ((emms-info-asynchronously nil)
         (emms-player-next-function #'ignore))
-    (emms-play-file audio)))
+    (when audio
+      (emms-play-file audio))))
 
 (defun memrise-call-after-all-audio-is-finished (func &rest args)
   "Call `FUNC' with `ARGS' after all audio is over."
