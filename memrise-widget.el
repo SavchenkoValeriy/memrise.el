@@ -59,6 +59,11 @@
   :type '(key-sequence :tag "key")
   :group 'memrise)
 
+(defcustom memrise-ask-for-completion-key [?\C-']
+  "Key to popup a completing read to choose one of the options."
+  :type '(key-sequence :tag "key")
+  :group 'memrise)
+
 (defvar memrise-presentation-format
   "${text}\n${translation}\n${literal-translation}"
   "Template for presentation of a new thing.")
@@ -184,7 +189,8 @@ language, for a given translation in a source language.
                  :prefix-format memrise-multiple-choice-format
                  :requires-audio 'after
                  :instant-submit memrise-multiple-choice-instant-submit
-                 :size number))
+                 :size number
+                 :allow-completion t))
 
 (defun memrise-reversed-multiple-choice-widget (test number)
   "Create reversed mutliple choice `TEST'.
@@ -198,7 +204,8 @@ source language, for a given translation in a target language.
                  :prefix-format memrise-reversed-multiple-choice-format
                  :requires-audio 'before
                  :instant-submit memrise-reversed-multiple-choice-instant-submit
-                 :size number))
+                 :size number
+                 :allow-completion t))
 
 (defun memrise-audio-multiple-choice-widget (test number)
   "Create audio mutliple choice `TEST'.
@@ -215,10 +222,12 @@ with a translation of a given word in a source language.
                  :requires-audio nil
                  :notify (memrise-make-widget-callback
                           'memrise-audio-multiple-choice-widget-play)
+                 :labels (number-sequence 1 8)
                  ;; it doesn't really make sense to do instant submit
                  ;; for audio tests
                  :instant-submit nil
-                 :labels (number-sequence 1 8)))
+                 ;; ...the same goes to completion
+                 :allow-completion nil))
 
 (define-widget 'memrise-choice-widget 'radio-button-choice
   "Multiple choice widget for memrise tests."
@@ -234,24 +243,22 @@ with a translation of a given word in a source language.
   :submit #'memrise-choice-widget-submit-answer
   :on-submit-hook nil
   :instant-submit nil
-  :labels '())
+  :labels nil)
 
 (defun memrise-choice-widget-create (widget)
   "Create a memrise-choice-widget from `WIDGET'."
-  (let* ((test           (widget-get widget :test))
-         (prefix-format  (widget-get widget :prefix-format))
-         (requires-audio (widget-get widget :requires-audio))
-         (assign-keys    (widget-get widget :assign-keys))
-         (on             (widget-get widget :on))
-         (off            (widget-get widget :off))
-         (size           (widget-get widget :size))
-         (submit         (widget-get widget :submit))
-         (on-submit-hook (widget-get widget :on-submit-hook))
-         (instant-submit (widget-get widget :instant-submit))
-         (labels         (widget-get widget :labels))
-         (audio          (oref (oref test prompt) audio))
-         (text           (memrise-format-widget prefix-format test))
-         (choices        (memrise-widget-choices test size)))
+  (let* ((test             (widget-get widget :test))
+         (prefix-format    (widget-get widget :prefix-format))
+         (assign-keys      (widget-get widget :assign-keys))
+         (on               (widget-get widget :on))
+         (off              (widget-get widget :off))
+         (size             (widget-get widget :size))
+         (submit           (widget-get widget :submit))
+         (instant-submit   (widget-get widget :instant-submit))
+         (labels           (widget-get widget :labels))
+         (allow-completion (widget-get widget :allow-completion))
+         (text             (memrise-format-widget prefix-format test))
+         (choices          (memrise-widget-choices test size)))
     ;; all child buttons should have the same shape using
     ;; give :on and :off values.
     ;; as long as we don't use glyphs for buttons, define this
@@ -270,6 +277,8 @@ with a translation of a given word in a source language.
                                           memrise-radio-keys))
     (when labels
       (memrise-assign-labels labels (widget-get widget :children)))
+    (when allow-completion
+      (memrise--create-completing-read choices (widget-get widget :buttons)))
     (memrise-widget-setup-audio widget)))
 
 (defun memrise-choice-widget-submit-answer (widget)
@@ -479,7 +488,8 @@ with a translation of a given word in a source language.
   :min 4
   :max 8
   :submit #'memrise-choice-widget-submit-answer
-  :get-answer #'memrise--tapping-get-answer)
+  :get-answer #'memrise--tapping-get-answer
+  :allow-completion t)
 
 (defun memrise-tapping-widget-create (widget)
   "Create a memrise-tapping-widget from `WIDGET'."
@@ -592,18 +602,52 @@ with a translation of a given word in a source language.
 
 (defun memrise-setup-tapping-choices (widget)
   "Setup the list of tapping words available for the user in `WIDGET'."
-  (let* ((min     (widget-get widget :min))
-         (max     (widget-get widget :max))
-         (test    (widget-get widget :test))
-         (choices (memrise-construct-choices
-                   ;; correct is always a list
-                   (car (oref test correct))
-                   (oref test choices)
-                   max min))
-         (buttons (memrise-create-pick-buttons
-                   choices widget nil nil
-                   '(:action memrise-pick-button-insert-complex-value))))
-    (widget-put widget :buttons buttons)))
+  (let* ((min              (widget-get widget :min))
+         (max              (widget-get widget :max))
+         (test             (widget-get widget :test))
+         (allow-completion (widget-get widget :allow-completion))
+         (choices          (memrise-construct-choices
+                            ;; correct is always a list
+                            (car (oref test correct))
+                            (oref test choices)
+                            max min))
+         (buttons          (memrise-create-pick-buttons
+                            choices widget nil nil
+                            '(:action
+                              memrise-pick-button-insert-complex-value))))
+    (widget-put widget :buttons buttons)
+    (when allow-completion
+      (memrise--create-completing-read choices buttons))))
+
+(defun memrise--create-completing-read (choices buttons)
+  "Compose a completing read binding with the given `CHOICES'.
+
+The selected choice will cause the correponding button from `BUTTONS'
+to be pressed.
+
+NOTE: `BUTTONS' should be in exactly the same order as their corresponding
+`CHOICES'."
+  (local-set-key memrise-ask-for-completion-key
+                 (memrise-make-interactive #'memrise--ask-for-completion
+                                           choices buttons)))
+
+(defun memrise--ask-for-completion (choices buttons)
+  "Ask user to choose one of the `CHOICES' using `completing-read'.
+
+The selected choice will cause the correponding button from `BUTTONS'
+to be pressed.
+
+NOTE: `BUTTONS' should be in exactly the same order as their corresponding
+`CHOICES'."
+  (let* ((choice-to-button-map (-zip choices buttons))
+         ;; ask the user to choose one of the choices
+         (chosen (completing-read "Choose one of the options: "
+                                  choices nil t))
+         ;; find a button that matches the choice selected
+         (button-to-press (assoc-default chosen choice-to-button-map)))
+    (when button-to-press
+      ;; press this button
+      (widget-apply-action button-to-press))))
 
 (defun memrise-deactivate-widgets (widgets)
   "Deactivate given `WIDGETS'."

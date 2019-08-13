@@ -22,6 +22,7 @@
         - [Audio test](#audio-test)
         - [Tapping test](#tapping-test)
         - [Typing test](#typing-test)
+        - [Completion](#completion)
 - [Demo](#demo)
 - [Contribute](#contribute)
 - [Alternatives](#alternatives)
@@ -121,6 +122,7 @@ There is a problem that I didn't really look at now and it is connected to async
 | binding        | action                                            |
 |:--------------:|:-------------------------------------------------:|
 | <kbd>C-m</kbd> | Submit your answer                                |
+| <kbd>C-'</kbd> | Pop up a completion prompt (if available)         |
 | <kbd>C-r</kbd> | Replay the audio from the question (if available) |
 
 Other bindings are explicitly displayed during the session.
@@ -194,6 +196,22 @@ Typing test is the hardest, it asks user to type in the correct translation. All
 
 <p align="center">
   <img src="./assets/typing.gif" width="700" alt="Screenshot of a typing test">
+</p>
+
+#### Completion
+
+Sometimes fetching for the right option might take some time even when the user knows exactly what she is looking for. In this case, the user can use her completion system to find the option she needs. 
+
+Check the demo for the mutli-choice test:
+
+<p align="center">
+  <img src="./assets/multichoice-completing.gif" alt="Screenshot of a completing multi-choice test">
+</p>
+
+...and for the tapping test:
+
+<p align="center">
+  <img src="./assets/tapping-completing.gif" alt="Screenshot of a completing tapping test">
 </p>
 
 ## Demo
